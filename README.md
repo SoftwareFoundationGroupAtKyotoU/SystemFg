@@ -15,9 +15,12 @@ Do `make depend` and `make`.  You'll get `pbci`.
 * Type abstraction: `fun X -> e` or `fun 'X -> e`
 * Type application: `e [T]`
 * Cast: `(e : S => T)` (parentheses always required)
+* Top-level input: `e;;`, `let x : T = e;;`
 
 ## TODO
 
+* Add test inputs
+* `let rec`
 * Typechecking (using de Bruijn indices?)
 * blame labels (with polarity)
 * staging?
