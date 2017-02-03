@@ -6,7 +6,7 @@ Do `make depend` and `make`.  You'll get `pbci`.
 
 ## Syntax
 
-* Uppercase IDs for type variables: `'X` (static) and `X` (gradual).
+* Uppercase IDs for type variables: `X` (static) and `'X` (gradual).
 * Lowercase IDs for term variables.
 * Types: `Int`, `Bool`, `S->T`, `All X.T`.
 * Constants: integers, `true`, `false`
