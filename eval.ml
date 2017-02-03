@@ -28,81 +28,110 @@ let rec tysubstDyn id = function
   | Arr(ty1,ty2) -> Arr(tysubstDyn id ty1, tysubstDyn id ty2)
   | Forall(id', ty0) as ty' -> if id = id' then ty' else Forall(id', tysubstDyn id ty0)
   | TyVar id' -> if id = id' then Dyn else TyVar id'
-                                                         
-let rec eval env = function
-    Var id -> lookup id env
-  | IConst i -> IntV i
-  | BConst b -> BoolV b
+
+(* eval : term -> env -> value
+   (==>) : ty -> ty -> env -> value -> value
+
+ These functions are written in a somewhat peculiar style.  Case
+ analysis on the input term or types is performed _before_ it takes an
+ environment.  All recursive calls to eval and (==>) are put outside
+ "fun env ->".  In some sense, "eval t" and "ty1 ==> ty2" compile t
+ and a cast from ty1 to ty2 to an OCaml function of type env -> value
+ and env -> value -> value, respectively.  *)
+                                                 
+let rec eval = function 
+    Var id -> fun env -> lookup id env
+  | IConst i -> fun env -> IntV i
+  | BConst b -> fun env -> BoolV b
   | BinOp(op, e1, e2) ->
-     let v1 = eval env e1 in
-     let v2 = eval env e2 in
-     (match op, v1, v2 with
+     let v1 = eval e1 in
+     let v2 = eval e2 in
+     fun env ->
+     (match op, v1 env, v2 env with
         Plus, IntV i1, IntV i2 -> IntV (i1 + i2)
       | Mult, IntV i1, IntV i2 -> IntV (i1 * i2)
       | Lt, IntV i1, IntV i2 -> BoolV (i1 < i2)
       | _ -> failwith "Argument not integer")
   | IfExp(e1, e2, e3) ->
-     let test = eval env e1 in
-     (match test with
-        BoolV true -> eval env e2
-      | BoolV false -> eval env e3
+     let test = eval e1 in
+     let thenclause = eval e2 in
+     let elseclause = eval e3 in
+     fun env ->
+     (match test env with
+        BoolV true -> thenclause env
+      | BoolV false -> elseclause env
       | _ -> failwith "If: not bool")
   | FunExp (id, _, e) ->
-     Proc (fun v -> eval (VB (id, v, env)) e)
+     let body = eval e in
+     fun env -> Proc (fun v -> body (VB (id, v, env)))
   | AppExp (e1, e2) ->
-     let proc = eval env e1 in
-     let arg = eval env e2 in
-     (match proc with
-        Proc f -> f arg
+     let proc = eval e1 in
+     let arg = eval e2 in
+     fun env ->
+     (match proc env with
+        Proc f -> f (arg env)
       | _ -> failwith "Not procedure")
-  | TSFunExp (id, e) -> TProc (fun () -> eval env e)
-  | TGFunExp (id, e) -> TProc
-     (fun () -> let r = ref () in eval (TB (id, r, env)) e)
+  | TSFunExp (id, e) ->
+     let body = eval e in
+     fun env -> TProc (fun () -> body env)
+  | TGFunExp (id, e) ->
+     let body = eval e in
+     fun env -> TProc (fun () -> let r = ref () in body (TB (id, r, env)))
   | TAppExp (e, _) ->
-     (match eval env e with
+     let tfun = eval e in
+     fun env ->
+     (match tfun env with
         TProc f -> f ()
       | _ -> failwith "Not a type abstraction")
   | CastExp (e, ty1, ty2) ->
-     let v = eval env e in
-     (ty1 ==> ty2) env v
-and (==>) t1 t2 env = match t1, t2 with  (* cast interpretation *)
-    Int, Int -> fun v -> v
-  | Arr(Dyn,Dyn), Arr(Dyn,Dyn) -> fun v -> v
+     let v = eval e in
+     let cast = (ty1 ==> ty2) in
+     fun env -> cast env (v env)
+and (==>) t1 t2 = match t1, t2 with  (* cast interpretation *)
+    Int, Int -> fun env v -> v
+  | Arr(Dyn,Dyn), Arr(Dyn,Dyn) -> fun env v -> v
   | TyVar id1, TyVar id2 ->
-     if id1 = id2 then fun v -> v else failwith ("Not compatible: "^id1^" and "^id2)
-  | Dyn, Dyn -> fun v -> v
-  | Int, Dyn -> fun v -> Tagged (I, v)
-  | Bool, Dyn -> fun v -> Tagged (B, v)
-  | Arr(Dyn,Dyn), Dyn -> fun v -> Tagged (Ar, v)
-  | TyVar id, Dyn -> fun v -> Tagged (TV (lookupty id env), v)
+     if id1 = id2 then fun env v -> v else failwith ("Not compatible: "^id1^" and "^id2)
+  | Dyn, Dyn -> fun env v -> v
+  | Int, Dyn -> fun env v -> Tagged (I, v)
+  | Bool, Dyn -> fun env v -> Tagged (B, v)
+  | Arr(Dyn,Dyn), Dyn -> fun env v -> Tagged (Ar, v)
+  | TyVar id, Dyn -> fun env v -> Tagged (TV (lookupty id env), v)
   | Dyn, (Int | Arr(Dyn,Dyn) | TyVar _ as g) ->
-     fun v -> (match v, g with
-                 Tagged(I, v0), Int -> v0
-               | Tagged(B, v0), Bool -> v0
-               | Tagged(Ar, v0), Arr(Dyn, Dyn) -> v0
-               | Tagged(Ar, _), Arr(_, _) -> failwith "Can't happen!"
-               | Tagged(TV r, v0), TyVar id -> if lookupty id env = r then v0 else failwith "Blame!"
-               | Tagged(_, _), _ -> failwith "Blame!"
-               | _ -> failwith "Not tagged!")
+     fun env v -> (match v, g with
+                     Tagged(I, v0), Int -> v0
+                   | Tagged(B, v0), Bool -> v0
+                   | Tagged(Ar, v0), Arr(Dyn, Dyn) -> v0
+                   | Tagged(Ar, _), Arr(_, _) -> failwith "Can't happen!"
+                   | Tagged(TV r, v0), TyVar id -> if lookupty id env = r then v0 else failwith "Blame!"
+                   | Tagged(_, _), _ -> failwith "Blame!"
+                   | _ -> failwith "Not tagged!")
   | Arr(s1,t1), Arr(s2,t2) ->
-     (function
-        Proc f -> Proc (fun w -> let arg = (s2 ==> s1) env w in
-                                 (t1 ==> t2) env (f arg))
+     let argcast = (s2 ==> s1) in
+     let rescast = (t1 ==> t2) in
+     (fun env -> function
+        Proc f -> Proc (fun w -> let arg = argcast env w in
+                                 rescast env (f arg))
       | _ -> failwith "Not procedure!")
   | Forall(id1, t1), Forall(id2, t2) ->
-     (function
-        TProc f -> TProc (fun () -> (t1 ==> t2) env (f ()))
+     let bodycast = (t1 ==> t2) in
+     (fun env -> function
+        TProc f -> TProc (fun () -> bodycast env (f ()))
       | _ -> failwith "Not polyfun!")
   | ty1, Forall(id2, ty2) ->
-     fun v -> TProc (fun () -> (ty1 ==> ty2) (TB(id2, ref (), env)) v)
+     let bodycast = (ty1 ==> ty2) in
+     fun env v -> TProc (fun () -> bodycast (TB(id2, ref (), env)) v)
   | Forall(id1, ty1), ty2 ->
-     (function
-        TProc f -> (tysubstDyn id1 ty1 ==> ty2) env (f ())  (* Can we avoid this cost of type substitution? *)
+     let bodycast = (tysubstDyn id1 ty1 ==> ty2) in
+     (fun env -> function
+        TProc f -> bodycast env (f ())
       | _ -> failwith "Not polyfun!")
   | Arr(s1,t1) as ty, Dyn ->
-     fun v -> Tagged (Ar, (ty ==> Arr(Dyn, Dyn)) env v)
+     let cast = (ty ==> Arr(Dyn, Dyn)) in
+     fun env v -> Tagged (Ar, cast env v)
   | Dyn, (Arr(s, t) as ty) ->
-     fun v -> (Arr(Dyn,Dyn) ==> ty) env (Tagged (Ar, v))
+     let cast = (Arr(Dyn,Dyn) ==> ty) in
+     fun env v -> cast env (Tagged (Ar, v))
   | _, _ -> failwith "Can't happen!"
 
 let rec pp_val = function
@@ -117,7 +146,7 @@ let rec pp_val = function
   | Tagged(TV _, v) -> pp_val v; print_string " : X => ?"
 
 let eval_decl env = function
-    Prog e -> let v = eval env e in
+    Prog e -> let v = eval e env in
               ("-", v, env)
-  | Decl(id, ty, e) -> let v = eval env e in
+  | Decl(id, ty, e) -> let v = eval e env in
                        (id, v, VB(id, v, env))
