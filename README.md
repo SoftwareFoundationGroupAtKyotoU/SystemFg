@@ -1,5 +1,9 @@
 # Interpreter of PBC
 
+## Build instructions
+
+Do `make depend` and `make`.  You'll get `pbci`.
+
 ## Syntax
 
 * Uppercase IDs for type variables: `'X` (static) and `X` (gradual).
