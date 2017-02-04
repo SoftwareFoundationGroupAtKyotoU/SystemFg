@@ -6,7 +6,7 @@ Do `make depend` and `make`.  You'll get `pbci`.
 
 ## Syntax
 
-* Uppercase IDs for type variables: `X` (static) and `'X` (gradual).
+* Uppercase IDs for type variables: `'X` (static) and `X` (gradual).
 * Lowercase IDs for term variables.
 * Types: `Int`, `Bool`, `S->T`, `All X.T`.
 * Constants: integers, `true`, `false`
@@ -16,6 +16,7 @@ Do `make depend` and `make`.  You'll get `pbci`.
 * Type application: `e [T]`
 * Cast: `(e : S => T)` (parentheses always required)
 * Top-level input: `e;;`, `let x : T = e;;`
+* a list of parameters allowed for `let` and `fun`, as `fun X (x:X) -> x` or `let id X (x:X) : X = x;;`
 
 ## TODO
 

@@ -49,11 +49,11 @@ rule main = parse
       try 
         List.assoc id reservedWords
       with
-      _ -> Parser.STVarID id
+      _ -> Parser.GTVarID id
      }
 | '\'' ['A'-'Z'] ['A'-'Z' 'a'-'z' '0'-'9' '_' '\'']*
     { let id = Lexing.lexeme lexbuf in
-          Parser.GTVarID id
+          Parser.STVarID id
      }
 | eof { exit 0 }
 

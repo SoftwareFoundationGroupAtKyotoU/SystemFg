@@ -17,7 +17,9 @@ open Syntax
 
 toplevel :
     Expr SEMISEMI { Prog $1 }
-  | LET LCID COLON Type EQ Expr SEMISEMI { Decl ($2, $4, $6) }
+  | LET LCID LetParamList COLON Type EQ Expr SEMISEMI {
+      let t, ty = $3 $7 $5 in
+      Decl ($2, ty, t) }
 /*
   | LET REC ID EQ FUN ID RARROW Expr SEMISEMI { RecDecl ($3, $6, $8) }
 */
@@ -25,8 +27,6 @@ toplevel :
 Expr :
     IfExpr { $1 }
   | FunExpr { $1 }
-  | STAbsExpr { $1 }
-  | GTAbsExpr { $1 }
   | LetExpr { $1 }
 /*  | LetRecExpr { $1 } */
   | LTExpr { $1 }
@@ -60,27 +60,56 @@ IfExpr :
     IF Expr THEN Expr ELSE Expr { IfExp ($2, $4, $6) }
 
 LetExpr :
-    LET LCID COLON Type EQ Expr IN Expr { AppExp(FunExp($2, $4, $8), $6) }
+    LET LCID LetParamList COLON Type EQ Expr IN Expr {
+      let (t, ty) = $3 $7 $5 in
+      AppExp(FunExp($2, ty, $9), t)
+    }
 
 FunExpr :
-    FUN LPAREN LCID COLON Type RPAREN RARROW Expr { FunExp ($3, $5, $8) }
-
-STAbsExpr :
-    FUN STVarID RARROW Expr { TSFunExp ($2, $4) }
-    
-GTAbsExpr :
-    FUN GTVarID RARROW Expr { TGFunExp ($2, $4) }
+    FUN NEParamList RARROW Expr { $2 $4 }
 
 /*
 LetRecExpr :
     LET REC LCID EQ FUN LCID RARROW Expr IN Expr { LetRecExp ($3, $6, $8, $10) }
 */
 
+ParamList :
+    /* empty */ { fun t -> t }
+  | NEParamList { $1 }
+
+NEParamList :
+    LPAREN LCID COLON Type RPAREN { fun t -> FunExp($2, $4, t) }
+  | STVarID { fun t -> TSFunExp($1, t) }
+  | GTVarID { fun t -> TGFunExp($1, t) }
+  | LPAREN LCID COLON Type RPAREN NEParamList { fun t -> FunExp($2, $4, $6 t) }
+  | STVarID NEParamList { fun t -> TSFunExp($1, $2 t) }
+  | GTVarID NEParamList { fun t -> TGFunExp($1, $2 t) }
+
+LetParamList :
+    /* empty */ { fun t ty -> (t, ty) }
+  | LPAREN LCID COLON Type RPAREN LetParamList { fun t ty ->
+       let (t', ty') = $6 t ty in
+       FunExp($2, $4, t'), ty'
+    }
+  | STVarID LetParamList { fun t ty ->
+       let (t', ty') = $2 t ty in
+       TSFunExp($1, t'), ty'
+    }
+  | GTVarID LetParamList { fun t ty ->
+       let (t', ty') = $2 t ty in
+       TGFunExp($1, t'), ty'
+    }
 
 Type :
   | AType RARROW Type { Arr($1, $3) }
-  | ALL GTVarID DOT Type { Forall($2, $4) }
+  | ALL NETVSeq DOT Type { $2 $4 }
   | AType { $1 }
+
+NETVSeq : /* nonempty type var sequence */
+    STVarID { fun t -> Forall($1, t) }
+  | GTVarID { fun t -> Forall($1, t) }
+  | STVarID NETVSeq { fun t -> Forall($1, $2 t) }
+  | GTVarID NETVSeq { fun t -> Forall($1, $2 t) }
 
 AType :
     INT { Int }
