@@ -1,0 +1,19 @@
+let id (x:*) : * = x;;
+
+let polyid : All X.X->X = (id : *->* => All X.X->X);;
+
+polyid [Int] 2;;
+
+let dynsucc : *->* = fun (x:*) -> 1 + (x : * => Int);;
+
+dynsucc (4 : Int => *);;
+
+let wrongpolyid : All X.X->X = (dynsucc : *->* => All X.X->X);;
+
+wrongpolyid [Int] 4;;
+
+let id X (x:X) : X = x;;
+
+let castid : * -> * = (id : All X.X->X => *->*);;
+
+castid (3 : Int=>*);;
