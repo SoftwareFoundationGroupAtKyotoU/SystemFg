@@ -66,24 +66,20 @@ LetExpr :
     }
 
 FunExpr :
-    FUN NEParamList RARROW Expr { $2 $4 }
+    FUN FunParamList RARROW Expr { $2 $4 }
 
 /*
 LetRecExpr :
     LET REC LCID EQ FUN LCID RARROW Expr IN Expr { LetRecExp ($3, $6, $8, $10) }
 */
 
-ParamList :
-    /* empty */ { fun t -> t }
-  | NEParamList { $1 }
-
-NEParamList :
+FunParamList :
     LPAREN LCID COLON Type RPAREN { fun t -> FunExp($2, $4, t) }
   | STVarID { fun t -> TSFunExp($1, t) }
   | GTVarID { fun t -> TGFunExp($1, t) }
-  | LPAREN LCID COLON Type RPAREN NEParamList { fun t -> FunExp($2, $4, $6 t) }
-  | STVarID NEParamList { fun t -> TSFunExp($1, $2 t) }
-  | GTVarID NEParamList { fun t -> TGFunExp($1, $2 t) }
+  | LPAREN LCID COLON Type RPAREN FunParamList { fun t -> FunExp($2, $4, $6 t) }
+  | STVarID FunParamList { fun t -> TSFunExp($1, $2 t) }
+  | GTVarID FunParamList { fun t -> TGFunExp($1, $2 t) }
 
 LetParamList :
     /* empty */ { fun t ty -> (t, ty) }
