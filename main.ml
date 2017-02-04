@@ -1,22 +1,24 @@
 open Eval
        
-let rec read_eval_print env =
+let rec read_eval_print lexeme env tyenv =
   print_string "# ";
   flush stdout;
-  let newenv =
+  let newenv, newtyenv =
     try
-      let decl = Parser.toplevel Lexer.main (Lexing.from_channel stdin) in
-      let (id, v, newenv) = eval_decl env decl in
+      let decl = Parser.toplevel Lexer.main lexeme in
+      let (id, v, newenv, newtyenv) = eval_decl env tyenv (decl tyenv) in
       print_string (id ^ " = ");
       pp_val v;
       print_newline();
-      newenv
-    with Parsing.Parse_error -> print_string "Parse error\n"; env
-       | Failure s -> print_string s; print_newline(); env
-       | _ -> env
+      newenv, newtyenv
+    with Parsing.Parse_error -> print_string "Parse error\n"; env, tyenv
+       | Failure s -> print_string s; print_newline(); env, tyenv
+       | _ -> env, tyenv
   in 
-  read_eval_print newenv
+  read_eval_print lexeme newenv newtyenv
                     
 let initial_env = Empty
+let initial_tenv = []
 
-let _ = read_eval_print initial_env
+let () = read_eval_print (Lexing.from_channel stdin) initial_env initial_tenv
+

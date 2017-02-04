@@ -12,13 +12,13 @@ open Syntax
 %token <Syntax.id> GTVarID
 
 %start toplevel
-%type <Syntax.program> toplevel
+%type <Syntax.tyenv -> Syntax.program> toplevel
 %%
 
 toplevel :
-    Expr SEMISEMI { Prog $1 }
-  | LET LCID LetParamList COLON Type EQ Expr SEMISEMI {
-      let t, ty = $3 $7 $5 in
+    Expr SEMISEMI { fun ctx -> Prog ($1 ctx) }
+  | LET LCID LetParamList COLON Type EQ Expr SEMISEMI { fun ctx ->
+      let t, ty = $3 ctx $7 $5 in
       Decl ($2, ty, t) }
 /*
   | LET REC ID EQ FUN ID RARROW Expr SEMISEMI { RecDecl ($3, $6, $8) }
@@ -32,41 +32,41 @@ Expr :
   | LTExpr { $1 }
 
 LTExpr : 
-    PExpr LT PExpr { BinOp (Lt, $1, $3) }
+    PExpr LT PExpr { fun ctx -> BinOp (Lt, $1 ctx, $3 ctx) }
   | PExpr { $1 }
 
 PExpr :
-    PExpr PLUS MExpr { BinOp (Plus, $1, $3) }
+    PExpr PLUS MExpr { fun ctx -> BinOp (Plus, $1 ctx, $3 ctx) }
   | MExpr { $1 }
 
 MExpr : 
-    MExpr AST AppExpr { BinOp (Mult, $1, $3) }
+    MExpr AST AppExpr { fun ctx -> BinOp (Mult, $1 ctx, $3 ctx) }
   | AppExpr { $1 }
 
 AppExpr :
-    AppExpr AExpr { AppExp ($1, $2) }
-  | AppExpr LBRACKET Type RBRACKET { TAppExp ($1, $3) }
+    AppExpr AExpr { fun ctx -> AppExp ($1 ctx, $2 ctx) }
+  | AppExpr LBRACKET Type RBRACKET { fun ctx -> TAppExp ($1 ctx, $3 ctx) }
   | AExpr { $1 }
 
 AExpr :
-    INTV { IConst $1 }
-  | TRUE { BConst true }
-  | FALSE { BConst false }
-  | LCID { Var $1 }
+    INTV { fun ctx -> IConst $1 }
+  | TRUE { fun ctx -> BConst true }
+  | FALSE { fun ctx -> BConst false }
+  | LCID { fun ctx -> Var (name2index ctx $1) }
   | LPAREN Expr RPAREN { $2 }
-  | LPAREN Expr COLON Type DARROW Type RPAREN { CastExp ($2, $4, $6) }
+  | LPAREN Expr COLON Type DARROW Type RPAREN { fun ctx -> CastExp ($2 ctx, $4 ctx , $6 ctx) }
 
 IfExpr :
-    IF Expr THEN Expr ELSE Expr { IfExp ($2, $4, $6) }
+    IF Expr THEN Expr ELSE Expr { fun ctx -> IfExp ($2 ctx, $4 ctx, $6 ctx) }
 
 LetExpr :
-    LET LCID LetParamList COLON Type EQ Expr IN Expr {
-      let (t, ty) = $3 $7 $5 in
-      AppExp(FunExp($2, ty, $9), t)
+    LET LCID LetParamList COLON Type EQ Expr IN Expr { fun ctx ->
+      let (t, ty) = $3 ctx $7 $5 in
+      AppExp(FunExp($2, ty, $9 (($2,VDecl ty)::ctx)), t)
     }
 
 FunExpr :
-    FUN FunParamList RARROW Expr { $2 $4 }
+    FUN FunParamList RARROW Expr { fun ctx -> $2 ctx $4 }
 
 /*
 LetRecExpr :
@@ -74,43 +74,44 @@ LetRecExpr :
 */
 
 FunParamList :
-    LPAREN LCID COLON Type RPAREN { fun t -> FunExp($2, $4, t) }
-  | STVarID { fun t -> TSFunExp($1, t) }
-  | GTVarID { fun t -> TGFunExp($1, t) }
-  | LPAREN LCID COLON Type RPAREN FunParamList { fun t -> FunExp($2, $4, $6 t) }
-  | STVarID FunParamList { fun t -> TSFunExp($1, $2 t) }
-  | GTVarID FunParamList { fun t -> TGFunExp($1, $2 t) }
+    LPAREN LCID COLON Type RPAREN { fun ctx t -> let ty = $4 ctx in FunExp($2, ty, t (($2,VDecl ty)::ctx)) }
+  | STVarID { fun ctx t -> TSFunExp($1, t (($1,STVar)::ctx)) }
+  | GTVarID { fun ctx t -> TGFunExp($1, t (($1,GTVar)::ctx)) }
+  | LPAREN LCID COLON Type RPAREN FunParamList { fun ctx t -> let ty = $4 ctx in FunExp($2, ty, $6 (($2,VDecl ty)::ctx) t) }
+  | STVarID FunParamList { fun ctx t -> TSFunExp($1, $2 (($1,STVar)::ctx) t) }
+  | GTVarID FunParamList { fun ctx t -> TGFunExp($1, $2 (($1,GTVar)::ctx) t) }
 
 LetParamList :
-    /* empty */ { fun t ty -> (t, ty) }
-  | LPAREN LCID COLON Type RPAREN LetParamList { fun t ty ->
-       let (t', ty') = $6 t ty in
-       FunExp($2, $4, t'), ty'
+    /* empty */ { fun ctx t ty -> (t ctx, ty ctx) }
+  | LPAREN LCID COLON Type RPAREN LetParamList { fun ctx t ty ->
+       let ty' = $4 ctx in
+       let (t', ty'') = $6 (($2,VDecl ty')::ctx) t ty in
+       FunExp($2, ty', t'), Arr(ty',ty'')
     }
-  | STVarID LetParamList { fun t ty ->
-       let (t', ty') = $2 t ty in
-       TSFunExp($1, t'), ty'
+  | STVarID LetParamList { fun ctx t ty ->
+       let (t', ty') = $2 (($1,STVar)::ctx) t ty in
+       TSFunExp($1, t'), Forall($1, ty')
     }
-  | GTVarID LetParamList { fun t ty ->
-       let (t', ty') = $2 t ty in
-       TGFunExp($1, t'), ty'
+  | GTVarID LetParamList { fun ctx t ty ->
+       let (t', ty') = $2 (($1,GTVar)::ctx) t ty in
+       TGFunExp($1, t'), Forall($1, ty')
     }
 
 Type :
-  | AType RARROW Type { Arr($1, $3) }
-  | ALL NETVSeq DOT Type { $2 $4 }
+  | AType RARROW Type { fun ctx -> Arr($1 ctx, $3 ctx) }
+  | ALL NETVSeq DOT Type { fun ctx -> $2 ctx $4 }
   | AType { $1 }
 
 NETVSeq : /* nonempty type var sequence */
-    STVarID { fun t -> Forall($1, t) }
-  | GTVarID { fun t -> Forall($1, t) }
-  | STVarID NETVSeq { fun t -> Forall($1, $2 t) }
-  | GTVarID NETVSeq { fun t -> Forall($1, $2 t) }
+    STVarID { fun ctx ty -> Forall($1, ty (($1,STVar)::ctx)) }
+  | GTVarID { fun ctx ty -> Forall($1, ty (($1,GTVar)::ctx)) }
+  | STVarID NETVSeq { fun ctx ty -> Forall($1, $2 (($1,STVar)::ctx) ty) }
+  | GTVarID NETVSeq { fun ctx ty -> Forall($1, $2 (($1,GTVar)::ctx) ty) }
 
 AType :
-    INT { Int }
-  | BOOL { Bool }
-  | AST { Dyn }
-  | GTVarID { TyVar $1 }
-  | STVarID { TyVar $1 }
+    INT { fun ctx -> Int }
+  | BOOL { fun ctx -> Bool }
+  | AST { fun ctx -> Dyn }
+  | GTVarID { fun ctx -> TyVar (name2index ctx $1) }
+  | STVarID { fun ctx -> TyVar (name2index ctx $1) }
   | LPAREN Type RPAREN { $2 }

@@ -8,26 +8,18 @@ type value =
 | Tagged of tag * value
 and env =
   Empty
-| VB of string * value * env
-| TB of string * unit ref * env
+| VB of value * env
+| TB of unit ref * env
 
-let rec lookup id = function
-    Empty -> failwith ("Variable not found: " ^ id)
-  | VB (id', v, env) -> if id = id' then v else lookup id env
-  | TB (_, _, env) -> lookup id env
+let rec lookup idx = function
+    Empty -> failwith ("lookup: can't happen: " ^ string_of_int idx)
+  | VB (v, env) -> if idx = 0 then v else lookup (idx-1) env
+  | TB (_, env) -> lookup (idx-1) env
 
-let rec lookupty id = function
-    Empty -> failwith ("Tyvar Static or not declared: " ^ id)
-  | VB (id', v, env) -> lookupty id env
-  | TB (id', v, env) -> if id = id' then v else lookupty id env
-
-let rec tysubstDyn id = function
-    Int -> Int
-  | Bool -> Bool
-  | Dyn -> Dyn
-  | Arr(ty1,ty2) -> Arr(tysubstDyn id ty1, tysubstDyn id ty2)
-  | Forall(id', ty0) as ty' -> if id = id' then ty' else Forall(id', tysubstDyn id ty0)
-  | TyVar id' -> if id = id' then Dyn else TyVar id'
+let rec lookupty idx = function
+    Empty -> failwith ("lookupty: can't happen: " ^ string_of_int idx)
+  | VB (_, env) -> lookupty (idx-1) env
+  | TB (v, env) -> if idx = 0 then v else lookupty (idx-1) env
 
 (* eval : term -> env -> value
    (==>) : ty -> ty -> env -> value -> value
@@ -40,7 +32,7 @@ let rec tysubstDyn id = function
  and env -> value -> value, respectively.  *)
                                                  
 let rec eval = function 
-    Var id -> fun env -> lookup id env
+    Var idx -> fun env -> lookup idx env
   | IConst i -> fun env -> IntV i
   | BConst b -> fun env -> BoolV b
   | BinOp(op, e1, e2) ->
@@ -63,7 +55,7 @@ let rec eval = function
       | _ -> failwith "If: not bool")
   | FunExp (id, _, e) ->
      let body = eval e in
-     fun env -> Proc (fun v -> body (VB (id, v, env)))
+     fun env -> Proc (fun v -> body (VB (v, env)))
   | AppExp (e1, e2) ->
      let proc = eval e1 in
      let arg = eval e2 in
@@ -72,11 +64,11 @@ let rec eval = function
         Proc f -> f (arg env)
       | _ -> failwith "Not procedure")
   | TSFunExp (id, e) ->
-     let body = eval e in
+     let body = eval e in  (**** shift -1 ****)
      fun env -> TProc (fun () -> body env)
   | TGFunExp (id, e) ->
      let body = eval e in
-     fun env -> TProc (fun () -> let r = ref () in body (TB (id, r, env)))
+     fun env -> TProc (fun () -> let r = ref () in body (TB (r, env)))
   | TAppExp (e, _) ->
      let tfun = eval e in
      fun env ->
@@ -91,7 +83,7 @@ and (==>) t1 t2 = match t1, t2 with  (* cast interpretation *)
     Int, Int -> fun env v -> v
   | Arr(Dyn,Dyn), Arr(Dyn,Dyn) -> fun env v -> v
   | TyVar id1, TyVar id2 ->
-     if id1 = id2 then fun env v -> v else failwith ("Not compatible: "^id1^" and "^id2)
+     if id1 = id2 then fun env v -> v else failwith ("Not compatible: "^ string_of_int id1^" and "^ string_of_int id2)
   | Dyn, Dyn -> fun env v -> v
   | Int, Dyn -> fun env v -> Tagged (I, v)
   | Bool, Dyn -> fun env v -> Tagged (B, v)
@@ -120,9 +112,9 @@ and (==>) t1 t2 = match t1, t2 with  (* cast interpretation *)
       | _ -> failwith "Not polyfun!")
   | ty1, Forall(id2, ty2) ->
      let bodycast = (ty1 ==> ty2) in
-     fun env v -> TProc (fun () -> bodycast (TB(id2, ref (), env)) v)
+     fun env v -> TProc (fun () -> bodycast (TB(ref (), env)) v)
   | Forall(id1, ty1), ty2 ->
-     let bodycast = (tysubstDyn id1 ty1 ==> ty2) in
+     let bodycast = (typeInst ty1 Dyn ==> ty2) in
      (fun env -> function
         TProc f -> bodycast env (f ())
       | _ -> failwith "Not polyfun!")
@@ -145,8 +137,8 @@ let rec pp_val = function
   | Tagged(Ar, v) -> pp_val v; print_string " : ?->? => ?"
   | Tagged(TV _, v) -> pp_val v; print_string " : X => ?"
 
-let eval_decl env = function
+let eval_decl env tyenv = function
     Prog e -> let v = eval e env in
-              ("-", v, env)
+              ("-", v, env, tyenv)
   | Decl(id, ty, e) -> let v = eval e env in
-                       (id, v, VB(id, v, env))
+                       (id, v, VB(v, env), (id, VDecl ty)::tyenv)
