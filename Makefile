@@ -9,13 +9,18 @@ OCAMLOPTFLAGS=$(INCLUDES) # add other options for ocamlopt here
 
 PROGNAME=pbci
 
-# The list of object files for prog1
-OBJS=syntax.cmx parser.cmx lexer.cmx typing.cmx eval.cmx main.cmx
+# The list of object files
+COMMONOBJS=syntax.cmx parserx.cmx lexerx.cmx typing.cmx eval.cmx
+OBJS=$(COMMONOBJS) main.cmx
+METAOBJS=$(COMMONOBJS) cogen.cmx metamain.cmx
 
-DEPEND += lexer.ml parser.ml
+DEPEND += lexerx.ml parserx.ml
 
 all: $(DEPEND) $(OBJS)
 	$(OCAMLOPT) -o $(PROGNAME) $(OCAMLFLAGS) $(OBJS)
+
+meta:
+	$(MAKE) OCAMLOPT=metaocamlopt OCAMLC=metaocamlc OBJS="$(METAOBJS)" all
 
 # Common rules
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
@@ -29,20 +34,20 @@ all: $(DEPEND) $(OBJS)
 .ml.cmx:
 	$(OCAMLOPT) $(OCAMLOPTFLAGS) -c $<
 
-parser.ml parser.mli: parser.mly	
+parserx.ml parserx.mli: parser.mly	
 	@rm -f $@
-	$(OCAMLYACC) -v $<
+	$(OCAMLYACC) -v -b parserx $< 
 	@chmod -w $@
 
-lexer.ml: lexer.mll
+lexerx.ml: lexer.mll
 	@rm -f $@
-	$(OCAMLLEX) $<
+	$(OCAMLLEX) -o lexerx.ml $<
 	@chmod -w $@
 
 # Clean up
 clean:
 	rm -f $(PROGNAME)
-	rm -f *.cm[iox] *.o *~ parser.ml parser.mli parser.output lexer.ml .depend
+	rm -f *.cm[iox] *.o *~ parserx.ml parserx.mli parser.output lexerx.ml .depend
 
 # Dependencies
 depend:: $(DEPEND)

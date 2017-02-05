@@ -1,18 +1,18 @@
 {
 let reservedWords = [
   (* Keywords *)
-  ("else", Parser.ELSE);
-  ("false", Parser.FALSE);
-  ("fun", Parser.FUN);
-  ("if", Parser.IF);
-  ("in", Parser.IN);
-  ("let", Parser.LET);
-  ("rec", Parser.REC);
-  ("then", Parser.THEN);
-  ("true", Parser.TRUE);
-  ("Int", Parser.INT);
-  ("Bool", Parser.BOOL);
-  ("All", Parser.ALL);
+  ("else", Parserx.ELSE);
+  ("false", Parserx.FALSE);
+  ("fun", Parserx.FUN);
+  ("if", Parserx.IF);
+  ("in", Parserx.IN);
+  ("let", Parserx.LET);
+  ("rec", Parserx.REC);
+  ("then", Parserx.THEN);
+  ("true", Parserx.TRUE);
+  ("Int", Parserx.INT);
+  ("Bool", Parserx.BOOL);
+  ("All", Parserx.ALL);
 ] 
 }
 
@@ -21,39 +21,39 @@ rule main = parse
   [' ' '\009' '\012' '\n']+     { main lexbuf }
 
 | "-"? ['0'-'9']+
-    { Parser.INTV (int_of_string (Lexing.lexeme lexbuf)) }
+    { Parserx.INTV (int_of_string (Lexing.lexeme lexbuf)) }
 
-| "(" { Parser.LPAREN }
-| ")" { Parser.RPAREN }
-| "[" { Parser.LBRACKET }
-| "]" { Parser.RBRACKET }
-| ";;" { Parser.SEMISEMI }
-| "->" { Parser.RARROW }
-| "=>" { Parser.DARROW }
-| ":" { Parser.COLON }
-| "." { Parser.DOT }
-| "+" { Parser.PLUS }
-| "*" { Parser.AST }
-| "<" { Parser.LT }
-| "=" { Parser.EQ }
+| "(" { Parserx.LPAREN }
+| ")" { Parserx.RPAREN }
+| "[" { Parserx.LBRACKET }
+| "]" { Parserx.RBRACKET }
+| ";;" { Parserx.SEMISEMI }
+| "->" { Parserx.RARROW }
+| "=>" { Parserx.DARROW }
+| ":" { Parserx.COLON }
+| "." { Parserx.DOT }
+| "+" { Parserx.PLUS }
+| "*" { Parserx.AST }
+| "<" { Parserx.LT }
+| "=" { Parserx.EQ }
 
 | ['a'-'z'] ['A'-'Z' 'a'-'z' '0'-'9' '_' '\'']*
     { let id = Lexing.lexeme lexbuf in
       try 
         List.assoc id reservedWords
       with
-      _ -> Parser.LCID id
+      _ -> Parserx.LCID id
      }
 | ['A'-'Z'] ['A'-'Z' 'a'-'z' '0'-'9' '_' '\'']*
     { let id = Lexing.lexeme lexbuf in
       try 
         List.assoc id reservedWords
       with
-      _ -> Parser.GTVarID id
+      _ -> Parserx.GTVarID id
      }
 | '\'' ['A'-'Z'] ['A'-'Z' 'a'-'z' '0'-'9' '_' '\'']*
     { let id = Lexing.lexeme lexbuf in
-          Parser.STVarID id
+          Parserx.STVarID id
      }
 | eof { exit 0 }
 

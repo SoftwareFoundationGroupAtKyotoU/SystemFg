@@ -2,7 +2,8 @@
 
 ## Build instructions
 
-Do `make depend` and `make`.  You'll get `pbci`.
+* Do `make depend` and `make`.  You'll get `pbci`.
+* If you have BER MetaOCaml, do `make meta` instead of `make`.
 
 ## Syntax
 
@@ -23,7 +24,7 @@ Do `make depend` and `make`.  You'll get `pbci`.
 * Add more test inputs in test.pbc
 * `let rec`
 * blame labels (with polarity)
-* staging?
+* Avoid name conflict with Parser and Lexer in compiler-libs, which BER MetaOCaml uses.  Can we?
 
 ## Known bugs
 
