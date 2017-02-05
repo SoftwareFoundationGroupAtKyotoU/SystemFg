@@ -56,7 +56,7 @@ let rec con ctx ty1 ty2 =
 let rec typeOf ctx = function
     Var i ->
     (match List.nth ctx i with
-       (_, VDecl ty) -> ty
+       (_, VDecl ty) -> typeShift (i+1) 0 ty
      | (id, _) -> failwith ("var: "^id^"is not a term variable!?"))
   | IConst _ -> Int
   | BConst _ -> Bool
@@ -77,7 +77,8 @@ let rec typeOf ctx = function
                 else failwith "if: types of branches do not match"
       | _ -> failwith "if: type of test not of Bool")
   | FunExp(id, ty, e0) ->
-     Arr(ty, typeOf ((id, VDecl ty)::ctx) e0)
+     let tybody = typeOf ((id, VDecl ty)::ctx) e0 in
+     Arr(ty, typeShift (-1) 0 tybody)
   | AppExp(e1, e2) ->
      let ty1 = typeOf ctx e1 in
      let ty2 = typeOf ctx e2 in
