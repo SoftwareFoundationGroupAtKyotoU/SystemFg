@@ -17,3 +17,11 @@ let id2 X (x:X) : X = x;;
 let castid : * -> * = (id2 : All X.X->X => *->*);;
 
 castid (3 : Int=>*);;
+
+fun X (x:X) -> (x:X=>*);;
+
+let f X (x:X) : * = (x:X=>*);;
+
+fun X Y (x:X) (y:Y) -> x;;
+
+let k X Y (x:X) (y:Y) : X = x;;
