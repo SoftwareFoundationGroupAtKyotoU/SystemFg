@@ -24,4 +24,4 @@ let f X (x:X) : * = (x:X=>*);;
 
 fun X Y (x:X) (y:Y) -> x;;
 
-let k X Y (x:X) (y:Y) : X = x;;
+let k 'X 'Y (x:'X) (y:'Y) : 'X = x;;
