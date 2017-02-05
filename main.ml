@@ -1,4 +1,5 @@
 open Eval
+open Typing
        
 let rec read_eval_print lexeme env tyenv =
   print_string "# ";
@@ -6,8 +7,11 @@ let rec read_eval_print lexeme env tyenv =
   let newenv, newtyenv =
     try
       let decl = Parser.toplevel Lexer.main lexeme in
+      let ty = typingDecl tyenv (decl tyenv) in
       let (id, v, newenv, newtyenv) = eval_decl env tyenv (decl tyenv) in
-      print_string (id ^ " = ");
+      print_string (id ^ " : ");
+      print_string (Syntax.pp_ty tyenv ty);
+      print_string " = ";
       pp_val v;
       print_newline();
       newenv, newtyenv

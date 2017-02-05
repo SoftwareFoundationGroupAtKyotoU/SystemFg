@@ -10,8 +10,7 @@ OCAMLOPTFLAGS=$(INCLUDES) # add other options for ocamlopt here
 PROGNAME=pbci
 
 # The list of object files for prog1
-# OBJS=syntax.cmo parser.cmo lexer.cmo core.cmo typing.cmo main.cmo
-OBJS=syntax.cmx parser.cmx lexer.cmx eval.cmx main.cmx
+OBJS=syntax.cmx parser.cmx lexer.cmx typing.cmx eval.cmx main.cmx
 
 DEPEND += lexer.ml parser.ml
 

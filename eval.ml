@@ -132,10 +132,10 @@ let rec pp_val = function
   | BoolV false -> print_string "false"
   | Proc _ -> print_string "<fun>"
   | TProc _ -> print_string "<tfun>"
-  | Tagged(I, v) -> pp_val v; print_string " : Int => ?"
-  | Tagged(B, v) -> pp_val v; print_string " : Bool => ?"
-  | Tagged(Ar, v) -> pp_val v; print_string " : ?->? => ?"
-  | Tagged(TV _, v) -> pp_val v; print_string " : X => ?"
+  | Tagged(I, v) -> pp_val v; print_string " : Int => *"
+  | Tagged(B, v) -> pp_val v; print_string " : Bool => *"
+  | Tagged(Ar, v) -> pp_val v; print_string " : *->* => *"
+  | Tagged(TV _, v) -> pp_val v; print_string " : X => *"
 
 let eval_decl env tyenv = function
     Prog e -> let v = eval e env in

@@ -20,8 +20,11 @@ Do `make depend` and `make`.  You'll get `pbci`.
 
 ## TODO
 
-* Add test inputs
+* Add more test inputs in test.pbc
 * `let rec`
-* Typechecking (using de Bruijn indices?)
 * blame labels (with polarity)
 * staging?
+
+## Known bugs
+
+* `pp_ty` doesn't handle variable names declared twice or parentheses very well

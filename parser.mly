@@ -18,7 +18,7 @@ open Syntax
 toplevel :
     Expr SEMISEMI { fun ctx -> Prog ($1 ctx) }
   | LET LCID LetParamList COLON Type EQ Expr SEMISEMI { fun ctx ->
-      let t, ty = $3 ctx $7 $5 in
+      let t, ty = $3 ctx $7 ctx $5 in
       Decl ($2, ty, t) }
 /*
   | LET REC ID EQ FUN ID RARROW Expr SEMISEMI { RecDecl ($3, $6, $8) }
@@ -61,7 +61,7 @@ IfExpr :
 
 LetExpr :
     LET LCID LetParamList COLON Type EQ Expr IN Expr { fun ctx ->
-      let (t, ty) = $3 ctx $7 $5 in
+      let (t, ty) = $3 ctx $7 ctx $5 in
       AppExp(FunExp($2, ty, $9 (($2,VDecl ty)::ctx)), t)
     }
 
@@ -82,18 +82,18 @@ FunParamList :
   | GTVarID FunParamList { fun ctx t -> TGFunExp($1, $2 (($1,GTVar)::ctx) t) }
 
 LetParamList :
-    /* empty */ { fun ctx t ty -> (t ctx, ty ctx) }
-  | LPAREN LCID COLON Type RPAREN LetParamList { fun ctx t ty ->
+    /* empty */ { fun ctx t ctx' ty -> (t ctx, ty ctx') }
+  | LPAREN LCID COLON Type RPAREN LetParamList { fun ctx t ctx' ty ->
        let ty' = $4 ctx in
-       let (t', ty'') = $6 (($2,VDecl ty')::ctx) t ty in
+       let (t', ty'') = $6 (($2,VDecl ty')::ctx) t ctx' ty in
        FunExp($2, ty', t'), Arr(ty',ty'')
     }
-  | STVarID LetParamList { fun ctx t ty ->
-       let (t', ty') = $2 (($1,STVar)::ctx) t ty in
+  | STVarID LetParamList { fun ctx t ctx' ty ->
+       let (t', ty') = $2 (($1,STVar)::ctx) t (($1,STVar)::ctx') ty in
        TSFunExp($1, t'), Forall($1, ty')
     }
-  | GTVarID LetParamList { fun ctx t ty ->
-       let (t', ty') = $2 (($1,GTVar)::ctx) t ty in
+  | GTVarID LetParamList { fun ctx t ctx' ty ->
+       let (t', ty') = $2 (($1,GTVar)::ctx) t (($1,GTVar)::ctx') ty in
        TGFunExp($1, t'), Forall($1, ty')
     }
 
