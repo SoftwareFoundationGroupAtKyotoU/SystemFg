@@ -89,14 +89,20 @@ and (==>) t1 t2 = match t1, t2 with  (* cast interpretation *)
   | Bool, Dyn -> fun env v -> Tagged (B, v)
   | Arr(Dyn,Dyn), Dyn -> fun env v -> Tagged (Ar, v)
   | TyVar id, Dyn -> fun env v -> Tagged (TV (lookupty id env), v)
-  | Dyn, (Int | Arr(Dyn,Dyn) | TyVar _ as g) ->
-     fun env v -> (match v, g with
-                     Tagged(I, v0), Int -> v0
-                   | Tagged(B, v0), Bool -> v0
-                   | Tagged(Ar, v0), Arr(Dyn, Dyn) -> v0
-                   | Tagged(Ar, _), Arr(_, _) -> failwith "Can't happen!"
-                   | Tagged(TV r, v0), TyVar id -> if lookupty id env = r then v0 else failwith "Blame!"
-                   | Tagged(_, _), _ -> failwith "Blame!"
+  | Dyn, Int ->
+     fun env v -> (match v with
+                     Tagged(I, v0) -> v0
+                   | Tagged(_, _) -> failwith "Blame!"
+                   | _ -> failwith "Not tagged!")
+  | Dyn, Arr(Dyn,Dyn) ->
+     fun env v -> (match v with
+                   | Tagged(Ar, v0) -> v0
+                   | Tagged(_, _) -> failwith "Blame!"
+                   | _ -> failwith "Not tagged!")
+  | Dyn, TyVar id ->
+     fun env v -> (match v with
+                   | Tagged(TV r, v0) -> if lookupty id env = r then v0 else failwith "Blame!"
+                   | Tagged(_, _) -> failwith "Blame!"
                    | _ -> failwith "Not tagged!")
   | Arr(s1,t1), Arr(s2,t2) ->
      let argcast = (s2 ==> s1) in
