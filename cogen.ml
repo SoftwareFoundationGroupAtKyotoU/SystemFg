@@ -1,7 +1,7 @@
 open Syntax
 open Eval
 
-let rec eval = function 
+let rec eval = function
     Var idx -> fun env -> .< lookup idx .~env >.
   | IConst i -> fun env -> .< IntV i >.
   | BConst b -> fun env -> .< BoolV b >.
@@ -65,6 +65,11 @@ and (==>) t1 t2 = match t1, t2 with  (* cast interpretation *)
                        Tagged(I, v0) -> v0
                      | Tagged(_, _) -> failwith "Blame!"
                      | _ -> failwith "Not tagged!" >.
+  | Dyn, Bool ->
+     fun env v -> .< match .~v with
+                       Tagged(B, v0) -> v0
+                     | Tagged(_, _) -> failwith "Blame!"
+                     | _ -> failwith "Not tagged!" >.
   | Dyn, Arr(Dyn,Dyn) ->
      fun env v -> .< match .~v with
                      | Tagged(Ar, v0) -> v0
@@ -86,7 +91,7 @@ and (==>) t1 t2 = match t1, t2 with  (* cast interpretation *)
                      | _ -> failwith "Not procedure!" >.
   | Forall(id1, t1), Forall(id2, t2) ->
      let bodycast = (t1 ==> t2) in
-     fun env v -> .< match .~v with 
+     fun env v -> .< match .~v with
                        TProc f -> TProc (fun () -> .~(bodycast env .< f () >.))
                      | _ -> failwith "Not polyfun!" >.
   | ty1, Forall(id2, ty2) ->
@@ -94,7 +99,7 @@ and (==>) t1 t2 = match t1, t2 with  (* cast interpretation *)
      fun env v -> .< TProc (fun () -> .~(bodycast .< TB(ref (), .~env) >. v)) >.
   | Forall(id1, ty1), ty2 ->
      let bodycast = (typeInst ty1 Dyn ==> ty2) in
-     fun env v -> .< match .~v with 
+     fun env v -> .< match .~v with
                        TProc f -> .~(bodycast env .< f () >.)
                      | _ -> failwith "Not polyfun!" >.
   | Arr(s1,t1) as ty, Dyn ->
@@ -123,4 +128,3 @@ let eval_decl env tyenv = function
      (*     let v = Runcode.run code env in*)
      let v = Runnative.run code env in
      (id, v, VB(v, env), (id, VDecl ty)::tyenv)
-
