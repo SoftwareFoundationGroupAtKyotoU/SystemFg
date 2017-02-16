@@ -27,3 +27,5 @@ fun X Y (x:X) (y:Y) -> x;;
 let k 'X 'Y (x:'X) (y:'Y) : 'X = x;;
 
 ((1 : Int => *) : * => Bool);;
+
+(fun X Y (x : X) -> ((x : X => *) : * => Y)) [Int] [Int] 1;;

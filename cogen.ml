@@ -78,7 +78,7 @@ and (==>) t1 t2 = match t1, t2 with  (* cast interpretation *)
   | Dyn, TyVar id ->
      fun env v -> .< match .~v with
                      | Tagged(TV r, v0) ->
-                        if lookupty id .~env = r then v0
+                        if lookupty id .~env == r then v0
                         else failwith "Blame!"
                      | Tagged(_, _) -> failwith "Blame!"
                      | _ -> failwith "Not tagged!" >.
