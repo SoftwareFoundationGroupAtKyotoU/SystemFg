@@ -25,25 +25,25 @@ let rec eval = function
       | _ -> failwith "If: not bool" >.
   | FunExp (id, _, e) ->
      let body = eval e in
-     fun env -> .< Proc (fun v -> .~(body .< VB (v, .~env) >.)) >.
+     fun env -> .< Fun (fun v -> .~(body .< VB (v, .~env) >.)) >.
   | AppExp (e1, e2) ->
      let proc = eval e1 in
      let arg = eval e2 in
      fun env ->
      .< match .~(proc env) with
-          Proc f -> f .~(arg env)
+          Fun f -> f .~(arg env)
         | _ -> failwith "Not procedure" >.
   | TSFunExp (id, e) ->
      let body = eval e in  (**** shift -1 ****)
-     fun env -> .< TProc (fun () -> .~(body env)) >.
+     fun env -> .< TFun (fun () -> .~(body env)) >.
   | TGFunExp (id, e) ->
      let body = eval e in
-     fun env -> .< TProc (fun () -> let r = ref () in .~(body .< TB (r, .~env) >.)) >.
+     fun env -> .< TFun (fun () -> let r = ref () in .~(body .< TB (r, .~env) >.)) >.
   | TAppExp (e, _) ->
      let tfun = eval e in
      fun env ->
      .< match .~(tfun env) with
-          TProc f -> f ()
+          TFun f -> f ()
         | _ -> failwith "Not a type abstraction" >.
   | CastExp (e, ty1, ty2) ->
      let v = eval e in
@@ -86,21 +86,21 @@ and (==>) t1 t2 = match t1, t2 with  (* cast interpretation *)
      let argcast = (s2 ==> s1) in
      let rescast = (t1 ==> t2) in
      fun env v -> .< match .~v with
-                       Proc f -> Proc (fun w -> let arg = .~(argcast env .<w>.) in
+                       Fun f -> Fun (fun w -> let arg = .~(argcast env .<w>.) in
                                                 .~(rescast env .<f arg>.))
                      | _ -> failwith "Not procedure!" >.
   | Forall(id1, t1), Forall(id2, t2) ->
      let bodycast = (t1 ==> t2) in
      fun env v -> .< match .~v with
-                       TProc f -> TProc (fun () -> .~(bodycast env .< f () >.))
+                       TFun f -> TFun (fun () -> .~(bodycast env .< f () >.))
                      | _ -> failwith "Not polyfun!" >.
   | ty1, Forall(id2, ty2) ->
      let bodycast = (ty1 ==> ty2) in
-     fun env v -> .< TProc (fun () -> .~(bodycast .< TB(ref (), .~env) >. v)) >.
+     fun env v -> .< TFun (fun () -> .~(bodycast .< TB(ref (), .~env) >. v)) >.
   | Forall(id1, ty1), ty2 ->
      let bodycast = (typeInst ty1 Dyn ==> ty2) in
      fun env v -> .< match .~v with
-                       TProc f -> .~(bodycast env .< f () >.)
+                       TFun f -> .~(bodycast env .< f () >.)
                      | _ -> failwith "Not polyfun!" >.
   | Arr(s1,t1) as ty, Dyn ->
      let cast = (ty ==> Arr(Dyn, Dyn)) in
