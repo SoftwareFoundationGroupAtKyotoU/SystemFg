@@ -1,5 +1,7 @@
 open Syntax
-       
+
+type tag = I | B | Ar | TV of unit ref (* aka ground types *)
+
 type value =
   IntV of int
 | BoolV of bool

@@ -1,7 +1,5 @@
 type id = string
 
-type tag = I | B | Ar | TV of unit ref (* aka ground types *)
-
 type ty =
   Int
 | Bool
