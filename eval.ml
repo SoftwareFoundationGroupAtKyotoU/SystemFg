@@ -32,8 +32,8 @@ let rec lookupty idx = function
  "fun env ->".  In some sense, "eval t" and "ty1 ==> ty2" compile t
  and a cast from ty1 to ty2 to an OCaml function of type env -> value
  and env -> value -> value, respectively.  *)
-                                                 
-let rec eval = function 
+
+let rec eval = function
     Var idx -> fun env -> lookup idx env
   | IConst i -> fun env -> IntV i
   | BConst b -> fun env -> BoolV b
@@ -96,6 +96,11 @@ and (==>) t1 t2 = match t1, t2 with  (* cast interpretation *)
                      Tagged(I, v0) -> v0
                    | Tagged(_, _) -> failwith "Blame!"
                    | _ -> failwith "Not tagged!")
+  | Dyn, Bool ->
+     fun env v -> (match v with
+                     Tagged(B, v0) -> v0
+                   | Tagged(_, _) -> failwith "Blame!"
+                   | _ -> failwith "Not tagged!")
   | Dyn, Arr(Dyn,Dyn) ->
      fun env v -> (match v with
                    | Tagged(Ar, v0) -> v0
@@ -103,7 +108,7 @@ and (==>) t1 t2 = match t1, t2 with  (* cast interpretation *)
                    | _ -> failwith "Not tagged!")
   | Dyn, TyVar id ->
      fun env v -> (match v with
-                   | Tagged(TV r, v0) -> if lookupty id env = r then v0 else failwith "Blame!"
+                   | Tagged(TV r, v0) -> if lookupty id env == r then v0 else failwith "Blame!"
                    | Tagged(_, _) -> failwith "Blame!"
                    | _ -> failwith "Not tagged!")
   | Arr(s1,t1), Arr(s2,t2) ->
