@@ -70,7 +70,7 @@ aExpr :
     i=INTV { fun ctx -> IConst(i.p, i.v) }
   | pos=TRUE { fun ctx -> BConst(pos, true) }
   | pos=FALSE { fun ctx -> BConst(pos, false) }
-  | id=LCID { fun ctx -> Var (id.p, name2index ctx id.v) }
+  | id=LCID { fun ctx -> Var (id.p, name2index ctx id) }
   | LPAREN e=expr RPAREN { e }
   | pos=LPAREN e=expr COLON tgt=ty RPAREN
       { fun ctx -> AscExp(pos, e ctx, tgt ctx) }
@@ -134,6 +134,6 @@ aType :
     INT { fun ctx -> Int }
   | BOOL { fun ctx -> Bool }
   | AST { fun ctx -> Dyn }
-  | id=UCID { fun ctx -> TyVar (name2index ctx id.v) }
-  | id=PRIMEUCID { fun ctx -> TyVar (name2index ctx id.v) }
+  | id=UCID { fun ctx -> TyVar (name2index ctx id) }
+  | id=PRIMEUCID { fun ctx -> TyVar (name2index ctx id) }
   | LPAREN ty=ty RPAREN { ty }

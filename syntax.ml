@@ -19,11 +19,11 @@ type binding =
 type tyenv = (id * binding) list
 
 let rec name2index ctx id = match ctx with
-    [] -> failwith ("Unbound variable: " ^ id)
-  | (id', _) :: ctx' -> if id = id' then 0 else (name2index ctx' id) + 1
+    [] -> errAt id.p ("Unbound variable: " ^ id.v)
+  | (id', _) :: ctx' -> if id.v = id' then 0 else (name2index ctx' id) + 1
 
 let rec index2name ctx i = match ctx with
-    [] -> failwith ("Index too large: " ^ string_of_int i)
+    [] -> err ("Index too large: " ^ string_of_int i)
   | (id', _) :: ctx' -> if i = 0 then id' else (index2name ctx' (i-1))
 
 let rec typeShift d i = function  (* shift by d if >= i *)

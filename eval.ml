@@ -1,3 +1,4 @@
+open Support.Error
 open Syntax
 open FC
 
@@ -14,15 +15,15 @@ and env =
 | VB of value * env
 | TB of unit ref * env
 
-let rec lookup idx = function
-    Empty -> failwith ("lookup: can't happen: " ^ string_of_int idx)
-  | VB (v, env) -> if idx = 0 then v else lookup (idx-1) env
-  | TB (_, env) -> lookup (idx-1) env
+let rec lookup p idx = function
+    Empty -> errAt p ("Can't happen (unbound var : " ^ string_of_int idx ^")")
+  | VB (v, env) -> if idx = 0 then v else lookup p (idx-1) env
+  | TB (_, env) -> lookup p (idx-1) env
 
-let rec lookupty idx = function
-    Empty -> failwith ("lookupty: can't happen: " ^ string_of_int idx)
-  | VB (_, env) -> lookupty (idx-1) env
-  | TB (v, env) -> if idx = 0 then v else lookupty (idx-1) env
+let rec lookupty p idx = function
+    Empty -> errAt p ("Can't happen (unbound tyvar: " ^ string_of_int idx ^ ")")
+  | VB (_, env) -> lookupty p (idx-1) env
+  | TB (v, env) -> if idx = 0 then v else lookupty p (idx-1) env
 
 (* eval : term -> env -> value
    (==>) : ty -> ty -> env -> value -> value
@@ -35,10 +36,10 @@ let rec lookupty idx = function
  and env -> value -> value, respectively.  *)
 
 let rec eval = function
-    Var(_, idx) -> fun env -> lookup idx env
+    Var(p, idx) -> fun env -> lookup p idx env
   | IConst(_,i) -> fun env -> IntV i
   | BConst(_,b) -> fun env -> BoolV b
-  | BinOp(_, op, e1, e2) ->
+  | BinOp(p, op, e1, e2) ->
      let v1 = eval e1 in
      let v2 = eval e2 in
      fun env ->
@@ -46,8 +47,8 @@ let rec eval = function
         Plus, IntV i1, IntV i2 -> IntV (i1 + i2)
       | Mult, IntV i1, IntV i2 -> IntV (i1 * i2)
       | Lt, IntV i1, IntV i2 -> BoolV (i1 < i2)
-      | _ -> failwith "Argument not integer")
-  | IfExp(_, e1, e2, e3) ->
+      | _ -> errAt p "Can't happen (non-integer argument to binop)")
+  | IfExp(p, e1, e2, e3) ->
      let test = eval e1 in
      let thenclause = eval e2 in
      let elseclause = eval e3 in
@@ -55,90 +56,94 @@ let rec eval = function
      (match test env with
         BoolV true -> thenclause env
       | BoolV false -> elseclause env
-      | _ -> failwith "If: not bool")
+      | _ -> errAt p "Can't happen (nonbool condition)")
   | FunExp (_, id, _, e) ->
      let body = eval e in
      fun env -> Fun (fun v -> body (VB (v, env)))
-  | AppExp (_, e1, e2) ->
+  | AppExp (p, e1, e2) ->
      let proc = eval e1 in
      let arg = eval e2 in
      fun env ->
      (match proc env with
         Fun f -> f (arg env)
-      | _ -> failwith "Not procedure")
+      | _ -> errAt p "Can't happen (application of nonprocedure value)")
   | TSFunExp (_, id, e) ->
      let body = eval e in  (**** shift -1 ****)
      fun env -> TFun (fun () -> body env)
   | TGFunExp (_, id, e) ->
      let body = eval e in
      fun env -> TFun (fun () -> let r = ref () in body (TB (r, env)))
-  | TAppExp (_, e, _) ->
+  | TAppExp (p, e, _) ->
      let tfun = eval e in
      fun env ->
      (match tfun env with
         TFun f -> f ()
-      | _ -> failwith "Not a type abstraction")
-  | CastExp (_, e, ty1, ty2) ->
+      | _ -> errAt p "Can't happen (application of non-tyabs")
+  | CastExp (p, e, ty1, ty2) ->
      let v = eval e in
-     let cast = (ty1 ==> ty2) in
+     let cast = (ty1 ==> ty2) p in
      fun env -> cast env (v env)
-and (==>) t1 t2 = match t1, t2 with  (* cast interpretation *)
+and (==>) t1 t2 p = match t1, t2 with  (* cast interpretation *)
     Int, Int -> fun env v -> v
   | Arr(Dyn,Dyn), Arr(Dyn,Dyn) -> fun env v -> v
   | TyVar id1, TyVar id2 ->
-     if id1 = id2 then fun env v -> v else failwith ("Not compatible: "^ string_of_int id1^" and "^ string_of_int id2)
+     if id1 = id2 then fun env v -> v
+     else errAt p ("Can't happen: incompatible types "^
+                     string_of_int id1^" and "^ string_of_int id2)
   | Dyn, Dyn -> fun env v -> v
   | Int, Dyn -> fun env v -> Tagged (I, v)
   | Bool, Dyn -> fun env v -> Tagged (B, v)
   | Arr(Dyn,Dyn), Dyn -> fun env v -> Tagged (Ar, v)
-  | TyVar id, Dyn -> fun env v -> Tagged (TV (lookupty id env), v)
+  | TyVar id, Dyn -> fun env v -> Tagged (TV (lookupty p id env), v)
   | Dyn, Int ->
      fun env v -> (match v with
                      Tagged(I, v0) -> v0
                    | Tagged(_, _) -> failwith "Blame!"
-                   | _ -> failwith "Not tagged!")
+                   | _ -> errAt p "Can't happen (Untagged value)")
   | Dyn, Bool ->
      fun env v -> (match v with
                      Tagged(B, v0) -> v0
                    | Tagged(_, _) -> failwith "Blame!"
-                   | _ -> failwith "Not tagged!")
+                   | _ -> errAt p "Can't happen (Untagged value)")
   | Dyn, Arr(Dyn,Dyn) ->
      fun env v -> (match v with
                    | Tagged(Ar, v0) -> v0
                    | Tagged(_, _) -> failwith "Blame!"
-                   | _ -> failwith "Not tagged!")
+                   | _ -> errAt p "Can't happen (Untagged value)")
   | Dyn, TyVar id ->
      fun env v -> (match v with
-                   | Tagged(TV r, v0) -> if lookupty id env == r then v0 else failwith "Blame!"
+                   | Tagged(TV r, v0) ->
+                      if lookupty p id env == r then v0
+                      else failwith "Blame!"
                    | Tagged(_, _) -> failwith "Blame!"
-                   | _ -> failwith "Not tagged!")
+                   | _ -> errAt p "Can't happen (Untagged value)")
   | Arr(s1,t1), Arr(s2,t2) ->
-     let argcast = (s2 ==> s1) in
-     let rescast = (t1 ==> t2) in
+     let argcast = (s2 ==> s1) p in
+     let rescast = (t1 ==> t2) p in
      (fun env -> function
         Fun f -> Fun (fun w -> let arg = argcast env w in
                                  rescast env (f arg))
-      | _ -> failwith "Not procedure!")
+      | _ -> errAt p "Can't happen (Non-procedure value)")
   | Forall(id1, t1), Forall(id2, t2) ->
-     let bodycast = (t1 ==> t2) in
+     let bodycast = (t1 ==> t2) p in
      (fun env -> function
         TFun f -> TFun (fun () -> bodycast env (f ()))
-      | _ -> failwith "Not polyfun!")
+      | _ -> errAt p "Can't happen (Not polyfun)")
   | ty1, Forall(id2, ty2) ->
-     let bodycast = (ty1 ==> ty2) in
+     let bodycast = (ty1 ==> ty2) p in
      fun env v -> TFun (fun () -> bodycast (TB(ref (), env)) v)
   | Forall(id1, ty1), ty2 ->
-     let bodycast = (typeInst ty1 Dyn ==> ty2) in
+     let bodycast = (typeInst ty1 Dyn ==> ty2) p in
      (fun env -> function
         TFun f -> bodycast env (f ())
-      | _ -> failwith "Not polyfun!")
+      | _ -> errAt p "Can't happen (Not polyfun)")
   | Arr(s1,t1) as ty, Dyn ->
-     let cast = (ty ==> Arr(Dyn, Dyn)) in
+     let cast = (ty ==> Arr(Dyn, Dyn)) p in
      fun env v -> Tagged (Ar, cast env v)
   | Dyn, (Arr(s, t) as ty) ->
-     let cast = (Arr(Dyn,Dyn) ==> ty) in
+     let cast = (Arr(Dyn,Dyn) ==> ty) p in
      fun env v -> cast env (Tagged (Ar, v))
-  | _, _ -> failwith "Can't happen!"
+  | _, _ -> errAt p "Can't happen!"
 
 let rec pp_val = function
     IntV i -> print_int i
