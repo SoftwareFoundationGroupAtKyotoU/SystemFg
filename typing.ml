@@ -165,6 +165,10 @@ module FC =
        if src = tgt then f
        else FC.CastExp(f, src, tgt)
 
+     let typeOfBin = function
+         (Plus | Mult) -> Int, Int, Int
+       | Lt -> Int, Int, Bool
+
      let rec translate ctx = function
          Var i ->
          (match List.nth ctx i with
@@ -172,22 +176,15 @@ module FC =
           | (id, _) -> failwith ("var: "^id^"is not a term variable!?"))
        | IConst i -> FC.IConst i, Int
        | BConst b -> FC.BConst b, Bool
-       | BinOp((Plus | Mult) as op, e1, e2) ->
+       | BinOp(op, e1, e2) ->
           let (f1, ty1), (f2, ty2) = translate ctx e1, translate ctx e2 in
-          if con ctx ty1 Int then
-            if con ctx ty2 Int then
-              FC.BinOp(op, putOpCast ctx ty1 Int f1, putOpCast ctx ty2 Int f2),
-              Int
-            else failwith ("binop: second arg not of Int")
-          else failwith ("binop: first arg not of Int")
-       | BinOp(Lt, e1, e2) ->
-          let (f1, ty1), (f2, ty2) = translate ctx e1, translate ctx e2 in
-          if con ctx ty1 Int then
-            if con ctx ty2 Int then
-              FC.BinOp(Lt, putOpCast ctx ty1 Int f1, putOpCast ctx ty2 Int f2),
-              Bool
-            else failwith ("binop: second arg not of Int")
-          else failwith ("binop: first arg not of Int")
+          let ty1', ty2', ty3 = typeOfBin op in
+          if con ctx ty1 ty1' then
+            if con ctx ty2 ty2' then
+              FC.BinOp(op, putOpCast ctx ty1 ty1' f1, putOpCast ctx ty2 ty2' f2),
+              ty3
+            else failwith ("binop: second arg not as expected")
+          else failwith ("binop: first arg not as expected")
        | IfExp(e1, e2, e3) ->
           let f1, t1 = translate ctx e1 in
           (match t1 with
