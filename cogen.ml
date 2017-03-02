@@ -8,6 +8,10 @@ let lift_pos p =
   let {pos_fname=fname; pos_lnum=lnum; pos_bol=bol; pos_cnum=cnum} = p in
   .< {pos_fname=fname; pos_lnum=lnum; pos_bol=bol; pos_cnum=cnum} >.
 
+let errMsg_of_polarity = function
+    Pos -> .< fun v -> Printf.sprintf "Blame to the expression side %s" (string_of_val v) >.
+  | Neg -> .< fun v -> Printf.sprintf "Blame to the enviroment side %s" (string_of_val v) >.
+    
 let rec eval = function
     Var(p, idx) -> let p = lift_pos p in fun env -> .< lookup .~p idx .~env >.
   | IConst(_, i) -> fun env -> .< IntV i >.
@@ -79,21 +83,21 @@ and (==>) t1 t2 p plr = match t1, t2 with  (* cast interpretation *)
      let p = lift_pos p in
      fun env v -> .< match .~v with
                        Tagged(I, v0) -> v0
-                     | Tagged(_, _) -> errAt .~p msg
+                     | Tagged(_, _) -> errAt .~p (.~msg .~v)
                      | _ -> errAt .~p "Can't happen (Untagged value)" >.
   | Dyn, Bool ->
      let msg = errMsg_of_polarity plr in
      let p = lift_pos p in
      fun env v -> .< match .~v with
                        Tagged(B, v0) -> v0
-                     | Tagged(_, _) -> errAt .~p msg
+                     | Tagged(_, _) -> errAt .~p (.~msg .~v)
                      | _ -> errAt .~p "Can't happen (Untagged value)" >.
   | Dyn, Arr(Dyn,Dyn) ->
      let msg = errMsg_of_polarity plr in
      let p = lift_pos p in
      fun env v -> .< match .~v with
                      | Tagged(Ar, v0) -> v0
-                     | Tagged(_, _) -> errAt .~p msg
+                     | Tagged(_, _) -> errAt .~p (.~msg .~v)
                      | _ -> errAt .~p "Can't happen (Untagged value)" >.
   | Dyn, TyVar id ->
      let msg = errMsg_of_polarity plr in
@@ -101,8 +105,8 @@ and (==>) t1 t2 p plr = match t1, t2 with  (* cast interpretation *)
      fun env v -> .< match .~v with
                      | Tagged(TV r, v0) ->
                         if lookupty .~p id .~env == r then v0
-                        else errAt .~p msg
-                     | Tagged(_, _) -> errAt .~p msg
+                        else errAt .~p (.~msg .~v)
+                     | Tagged(_, _) -> errAt .~p (.~msg .~v)
                      | _ -> errAt .~p "Can't happen (Untagged value)" >.
   | Arr(s1,t1), Arr(s2,t2) ->
      let argcast = (s2 ==> s1) p (neg plr) in

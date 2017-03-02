@@ -15,13 +15,36 @@ and env =
 | VB of value * env
 | TB of unit ref * env
 
+let rec pp_val = function
+    IntV i -> print_int i
+  | BoolV true -> print_string "true"
+  | BoolV false -> print_string "false"
+  | Fun _ -> print_string "<fun>"
+  | TFun _ -> print_string "<tfun>"
+  | Tagged(I, v) -> pp_val v; print_string " : Int => *"
+  | Tagged(B, v) -> pp_val v; print_string " : Bool => *"
+  | Tagged(Ar, v) -> pp_val v; print_string " : *->* => *"
+  | Tagged(TV _, v) -> pp_val v; print_string " : X => *"
+
+let rec string_of_val = function
+    IntV i -> string_of_int i
+  | BoolV true -> "true"
+  | BoolV false -> "false"
+  | Fun _ -> "<fun>"
+  | TFun _ -> "<tfun>"
+  | Tagged(I, v) -> Printf.sprintf "%s : Int => *" (string_of_val v)
+  | Tagged(B, v) -> Printf.sprintf "%s : Bool => *" (string_of_val v)
+  | Tagged(Ar, v) -> Printf.sprintf "%s : *->* => *" (string_of_val v)
+  | Tagged(TV _, v) -> Printf.sprintf "%s : X => *" (string_of_val v)
+    (* TODO: recover the tyvar name *)
+
 type polarity = Pos | Neg
 
 let neg = function Pos -> Neg | Neg -> Pos
 
-let errMsg_of_polarity = function
-    Pos -> "Blame to the expression side"
-  | Neg -> "Blame to the enviroment side"
+let errMsg_of_polarity plr v = match plr with
+    Pos -> Printf.sprintf "Blame to the expression side %s" (string_of_val v)
+  | Neg -> Printf.sprintf "Blame to the enviroment side %s" (string_of_val v)
                         
 let rec lookup pos idx = function
     Empty -> errAt pos ("Can't happen (unbound var : " ^ string_of_int idx ^")")
@@ -106,24 +129,24 @@ and (==>) t1 t2 p plr = match t1, t2 with  (* cast interpretation *)
   | Dyn, Int ->
      fun env v -> (match v with
                      Tagged(I, v0) -> v0
-                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr)
+                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr v)
                    | _ -> errAt p "Can't happen (Untagged value)")
   | Dyn, Bool ->
      fun env v -> (match v with
                      Tagged(B, v0) -> v0
-                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr)
+                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr v)
                    | _ -> errAt p "Can't happen (Untagged value)")
   | Dyn, Arr(Dyn,Dyn) ->
      fun env v -> (match v with
                    | Tagged(Ar, v0) -> v0
-                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr)
+                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr v)
                    | _ -> errAt p "Can't happen (Untagged value)")
   | Dyn, TyVar id ->
      fun env v -> (match v with
                    | Tagged(TV r, v0) ->
                       if lookupty p id env == r then v0
-                      else errAt p (errMsg_of_polarity plr)
-                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr)
+                      else errAt p (errMsg_of_polarity plr v)
+                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr v)
                    | _ -> errAt p "Can't happen (Untagged value)")
   | Arr(s1,t1), Arr(s2,t2) ->
      let argcast = (s2 ==> s1) p (neg plr) in
@@ -152,17 +175,6 @@ and (==>) t1 t2 p plr = match t1, t2 with  (* cast interpretation *)
      let cast = (Arr(Dyn,Dyn) ==> ty) p plr in
      fun env v -> cast env (Tagged (Ar, v))
   | _, _ -> errAt p "Can't happen!"
-
-let rec pp_val = function
-    IntV i -> print_int i
-  | BoolV true -> print_string "true"
-  | BoolV false -> print_string "false"
-  | Fun _ -> print_string "<fun>"
-  | TFun _ -> print_string "<tfun>"
-  | Tagged(I, v) -> pp_val v; print_string " : Int => *"
-  | Tagged(B, v) -> pp_val v; print_string " : Bool => *"
-  | Tagged(Ar, v) -> pp_val v; print_string " : *->* => *"
-  | Tagged(TV _, v) -> pp_val v; print_string " : X => *"
 
 let eval_decl env tyenv = function
     Prog e -> let v = eval e env in
