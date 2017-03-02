@@ -234,6 +234,6 @@ module FC =
        | Decl(id, ty, e) ->
           let f, tye = translate ctx e in
           if con ctx tye ty then
-            FC.Decl (id, ty, putOpCast ctx ty tye f), ty
+            FC.Decl (id, ty, putOpCast ctx tye ty f), ty
           else failwith "let: the type of exp isn't as declared"
    end
