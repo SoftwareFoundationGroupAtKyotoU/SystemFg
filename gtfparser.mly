@@ -1,6 +1,6 @@
 %{
 open Syntax
-open FC
+open FG
 %}
 
 %token LPAREN RPAREN LBRACKET RBRACKET SEMISEMI RARROW DARROW COLON DOT
@@ -9,11 +9,11 @@ open FC
 
 %token <int> INTV
 %token <Syntax.id> LCID
-%token <Syntax.id> STVarID
-%token <Syntax.id> GTVarID
+%token <Syntax.id> PRIMEUCID
+%token <Syntax.id> UCID
 
 %start toplevel
-%type <Syntax.tyenv -> Syntax.FC.program> toplevel
+%type <Syntax.tyenv -> Syntax.FG.program> toplevel
 %%
 
 toplevel :
@@ -55,8 +55,8 @@ aExpr :
   | FALSE { fun ctx -> BConst false }
   | id=LCID { fun ctx -> Var (name2index ctx id) }
   | LPAREN e=expr RPAREN { e }
-  | LPAREN e=expr COLON src=ty DARROW tgt=ty RPAREN
-      { fun ctx -> CastExp (e ctx, src ctx , tgt ctx) }
+  | LPAREN e=expr COLON tgt=ty RPAREN
+      { fun ctx -> AscExp(e ctx, tgt ctx) }
 
 ifExpr :
     IF e1=expr THEN e2=expr ELSE e3=expr
@@ -78,11 +78,9 @@ LetRecExpr :
 
 funParamList :
     LPAREN id=LCID COLON ty=ty RPAREN { fun ctx t -> let ty = ty ctx in FunExp(id, ty, t ((id,VDecl ty)::ctx)) }
-  | id=STVarID { fun ctx t -> TSFunExp(id, t ((id,STVar)::ctx)) }
-  | id=GTVarID { fun ctx t -> TGFunExp(id, t ((id,GTVar)::ctx)) }
+  | id=UCID { fun ctx t -> TFunExp(id, t ((id,PossiblySTVar (ref true))::ctx)) }
   | LPAREN id=LCID COLON ty=ty RPAREN rest=funParamList { fun ctx t -> let ty = ty ctx in FunExp(id, ty, rest ((id,VDecl ty)::ctx) t) }
-  | id=STVarID rest=funParamList { fun ctx t -> TSFunExp(id, rest ((id,STVar)::ctx) t) }
-  | id=GTVarID rest=funParamList { fun ctx t -> TGFunExp(id, rest ((id,GTVar)::ctx) t) }
+  | id=UCID rest=funParamList { fun ctx t -> TFunExp(id, rest ((id,PossiblySTVar (ref true))::ctx) t) }
 
 letParamList :
     /* empty */ { fun ctx t ty -> (t ctx, ty ctx) }
@@ -91,13 +89,9 @@ letParamList :
        let (t', ty'') = rest ((id, VDecl ty')::ctx) t ty in
        FunExp(id, ty', t'), Arr(ty', typeShift (-1) 0 ty'')
     }
-  | id=STVarID rest=letParamList { fun ctx t ty ->
-       let (t', ty') = rest ((id,STVar)::ctx) t ty in
-       TSFunExp(id, t'), Forall(id, ty')
-    }
-  | id=GTVarID rest=letParamList { fun ctx t ty ->
-       let (t', ty') = rest ((id,GTVar)::ctx) t ty in
-       TGFunExp(id, t'), Forall(id, ty')
+  | id=UCID rest=letParamList { fun ctx t ty ->
+       let (t', ty') = rest ((id,PossiblySTVar (ref true))::ctx) t ty in
+       TFunExp(id, t'), Forall(id, ty')
     }
 
 ty :
@@ -106,15 +100,15 @@ ty :
   | ty=aType { ty }
 
 neTVSeq : /* nonempty type var sequence */
-    STVarID { fun ctx ty -> Forall($1, ty (($1,STVar)::ctx)) }
-  | GTVarID { fun ctx ty -> Forall($1, ty (($1,GTVar)::ctx)) }
-  | STVarID neTVSeq { fun ctx ty -> Forall($1, $2 (($1,STVar)::ctx) ty) }
-  | GTVarID neTVSeq { fun ctx ty -> Forall($1, $2 (($1,GTVar)::ctx) ty) }
+    PRIMEUCID { fun ctx ty -> Forall($1, ty (($1,STVar)::ctx)) }
+  | UCID { fun ctx ty -> Forall($1, ty (($1,GTVar)::ctx)) }
+  | PRIMEUCID neTVSeq { fun ctx ty -> Forall($1, $2 (($1,STVar)::ctx) ty) }
+  | UCID neTVSeq { fun ctx ty -> Forall($1, $2 (($1,GTVar)::ctx) ty) }
 
 aType :
     INT { fun ctx -> Int }
   | BOOL { fun ctx -> Bool }
   | AST { fun ctx -> Dyn }
-  | id=GTVarID { fun ctx -> TyVar (name2index ctx id) }
-  | id=STVarID { fun ctx -> TyVar (name2index ctx id) }
+  | id=UCID { fun ctx -> TyVar (name2index ctx id) }
+  | id=PRIMEUCID { fun ctx -> TyVar (name2index ctx id) }
   | LPAREN ty=ty RPAREN { ty }

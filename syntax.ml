@@ -66,6 +66,7 @@ module FG =
     | AppExp of term * term
     | TFunExp of id * term  (* the body must be a syntactic value and parameter is not needed *)
     | TAppExp of term * ty
+    | AscExp of term * ty (* type ascription *)
 
     type program =
       Prog of term

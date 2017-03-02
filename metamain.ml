@@ -8,8 +8,8 @@ let rec read_eval_print lexeme env tyenv =
   let newenv, newtyenv =
     try
       let decl = Gtfparser.toplevel Gtflexer.main lexeme in
-      let ty = FC.typingDecl tyenv (decl tyenv) in
-      let (id, v, newenv, newtyenv) = eval_decl env tyenv (decl tyenv) in
+      let decl, ty = FG.translateDecl tyenv (decl tyenv) in
+      let (id, v, newenv, newtyenv) = eval_decl env tyenv decl in
       print_string (id ^ " : ");
       print_string (Syntax.pp_ty tyenv ty);
       print_string " = ";

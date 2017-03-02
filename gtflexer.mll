@@ -49,11 +49,11 @@ rule main = parse
       try 
         List.assoc id reservedWords
       with
-      _ -> Gtfparser.GTVarID id
+      _ -> Gtfparser.UCID id
      }
 | '\'' ['A'-'Z'] ['A'-'Z' 'a'-'z' '0'-'9' '_' '\'']*
     { let id = Lexing.lexeme lexbuf in
-          Gtfparser.STVarID id
+          Gtfparser.PRIMEUCID id
      }
 | eof { exit 0 }
 
