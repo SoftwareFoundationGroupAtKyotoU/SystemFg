@@ -35,10 +35,10 @@ let rec lookupty idx = function
  and env -> value -> value, respectively.  *)
 
 let rec eval = function
-    Var idx -> fun env -> lookup idx env
-  | IConst i -> fun env -> IntV i
-  | BConst b -> fun env -> BoolV b
-  | BinOp(op, e1, e2) ->
+    Var(_, idx) -> fun env -> lookup idx env
+  | IConst(_,i) -> fun env -> IntV i
+  | BConst(_,b) -> fun env -> BoolV b
+  | BinOp(_, op, e1, e2) ->
      let v1 = eval e1 in
      let v2 = eval e2 in
      fun env ->
@@ -47,7 +47,7 @@ let rec eval = function
       | Mult, IntV i1, IntV i2 -> IntV (i1 * i2)
       | Lt, IntV i1, IntV i2 -> BoolV (i1 < i2)
       | _ -> failwith "Argument not integer")
-  | IfExp(e1, e2, e3) ->
+  | IfExp(_, e1, e2, e3) ->
      let test = eval e1 in
      let thenclause = eval e2 in
      let elseclause = eval e3 in
@@ -56,29 +56,29 @@ let rec eval = function
         BoolV true -> thenclause env
       | BoolV false -> elseclause env
       | _ -> failwith "If: not bool")
-  | FunExp (id, _, e) ->
+  | FunExp (_, id, _, e) ->
      let body = eval e in
      fun env -> Fun (fun v -> body (VB (v, env)))
-  | AppExp (e1, e2) ->
+  | AppExp (_, e1, e2) ->
      let proc = eval e1 in
      let arg = eval e2 in
      fun env ->
      (match proc env with
         Fun f -> f (arg env)
       | _ -> failwith "Not procedure")
-  | TSFunExp (id, e) ->
+  | TSFunExp (_, id, e) ->
      let body = eval e in  (**** shift -1 ****)
      fun env -> TFun (fun () -> body env)
-  | TGFunExp (id, e) ->
+  | TGFunExp (_, id, e) ->
      let body = eval e in
      fun env -> TFun (fun () -> let r = ref () in body (TB (r, env)))
-  | TAppExp (e, _) ->
+  | TAppExp (_, e, _) ->
      let tfun = eval e in
      fun env ->
      (match tfun env with
         TFun f -> f ()
       | _ -> failwith "Not a type abstraction")
-  | CastExp (e, ty1, ty2) ->
+  | CastExp (_, e, ty1, ty2) ->
      let v = eval e in
      let cast = (ty1 ==> ty2) in
      fun env -> cast env (v env)

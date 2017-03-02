@@ -59,36 +59,38 @@ let rec con ctx ty1 ty2 =
     | _, Dyn -> forall (isGradual ctx) (freeTVs ty1)
     | _ -> false
 
+let typeOfBin = function
+    (Plus | Mult) -> Int, Int, Int
+  | Lt -> Int, Int, Bool
+
+
 module FC =
   struct
     open Syntax.FC
     let rec typeOf ctx = function
-        Var i ->
+        Var(_,i) ->
         (match List.nth ctx i with
            (_, VDecl ty) -> typeShift (i+1) 0 ty
          | (id, _) -> failwith ("var: "^id^"is not a term variable!?"))
-      | IConst _ -> Int
-      | BConst _ -> Bool
-      | BinOp((Plus | Mult), e1, e2) ->
-         (match typeOf ctx e1, typeOf ctx e2 with
-            Int, Int -> Int
-          | Int, _ -> failwith ("binop: second arg not of Int")
-          | _ ->  failwith ("binop: first arg not of Int"))
-      | BinOp(Lt, e1, e2) ->
-         (match typeOf ctx e1, typeOf ctx e2 with
-            Int, Int -> Bool
-          | Int, _ -> failwith ("binop: second arg not of Int")
-          | _ ->  failwith ("binop: first arg not of Int"))
-      | IfExp(e1, e2, e3) ->
+      | IConst(_,_) -> Int
+      | BConst(_,_) -> Bool
+      | BinOp(p, op, e1, e2) ->
+          let ty1, ty2 = typeOf ctx e1, typeOf ctx e2 in
+          let ty1', ty2', ty3 = typeOfBin op in
+          if ty1 = ty1' then
+            if ty2 = ty2' then ty3
+            else failwith ("binop: second arg not as expected")
+          else failwith ("binop: first arg not as expected")
+      | IfExp(p, e1, e2, e3) ->
          (match typeOf ctx e1 with
             Bool -> let ty2 = typeOf ctx e2 in
                     if ty2 = typeOf ctx e3 then ty2
                     else failwith "if: types of branches do not match"
           | _ -> failwith "if: type of test not of Bool")
-      | FunExp(id, ty, e0) ->
+      | FunExp(p, id, ty, e0) ->
          let tybody = typeOf ((id, VDecl ty)::ctx) e0 in
          Arr(ty, typeShift (-1) 0 tybody)
-      | AppExp(e1, e2) ->
+      | AppExp(p, e1, e2) ->
          let ty1 = typeOf ctx e1 in
          let ty2 = typeOf ctx e2 in
          (match ty1 with
@@ -96,16 +98,16 @@ module FC =
           | Arr(ty11, _) ->
              failwith "app: the type of arg isn't consistent with the expected argument type"
           | _ -> failwith "app: the type of the expression isn't -> or *")
-      | TSFunExp(id, e0) ->
+      | TSFunExp(p, id, e0) ->
          Forall(id, typeOf ((id,STVar)::ctx) e0)
-      | TGFunExp(id, e0) ->
+      | TGFunExp(p, id, e0) ->
          Forall(id, typeOf ((id,GTVar)::ctx) e0)
-      | TAppExp(e1, ty) ->
+      | TAppExp(p, e1, ty) ->
          let ty1 = typeOf ctx e1 in
          (match ty1 with
           | Forall(id, ty11) -> typeInst ty11 ty
           | _ -> failwith "tyapp: not a polymorphic function")
-      | CastExp(e0, ty1, ty2) ->
+      | CastExp(p, e0, ty1, ty2) ->
          let ty0 = typeOf ctx e0 in
          if ty0 = ty1 then
            if con ctx ty1 ty2 then ty2
@@ -153,77 +155,73 @@ module FC =
          | _ -> false
 
      let matchingFun f1 = function
-         Dyn -> FC.CastExp(f1, Dyn, Arr(Dyn, Dyn)), Dyn, Dyn
+         Dyn -> FC.CastExp(FC.tmPos f1, f1, Dyn, Arr(Dyn, Dyn)), Dyn, Dyn
        | Arr(dom,cod) -> f1, dom, cod
        | _ -> failwith ("Type does not match with -> or *")
 
      let matchingTFun f1 = function
          Dyn ->
           let ty = Forall("dummy", Dyn) in
-          FC.CastExp(f1, Dyn, ty), Dyn
+          FC.CastExp(FC.tmPos f1, f1, Dyn, ty), Dyn
        | Forall(_,ty11) -> f1, ty11
        | _ -> failwith ("Type does not match with forall or *")
 
      let putOpCast ctx src tgt f =
        if src = tgt then f
-       else FC.CastExp(f, src, tgt)
-
-     let typeOfBin = function
-         (Plus | Mult) -> Int, Int, Int
-       | Lt -> Int, Int, Bool
+       else FC.CastExp(FC.tmPos f, f, src, tgt)
 
      let rec translate ctx = function
-         Var i ->
+         Var(p,i) ->
          (match List.nth ctx i with
-            (_, VDecl ty) -> FC.Var i, typeShift (i+1) 0 ty
+            (_, VDecl ty) -> FC.Var(p, i), typeShift (i+1) 0 ty
           | (id, _) -> failwith ("var: "^id^"is not a term variable!?"))
-       | IConst i -> FC.IConst i, Int
-       | BConst b -> FC.BConst b, Bool
-       | BinOp(op, e1, e2) ->
+       | IConst(p,i) -> FC.IConst(p,i), Int
+       | BConst(p,b) -> FC.BConst(p,b), Bool
+       | BinOp(p, op, e1, e2) ->
           let (f1, ty1), (f2, ty2) = translate ctx e1, translate ctx e2 in
           let ty1', ty2', ty3 = typeOfBin op in
           if con ctx ty1 ty1' then
             if con ctx ty2 ty2' then
-              FC.BinOp(op, putOpCast ctx ty1 ty1' f1, putOpCast ctx ty2 ty2' f2),
+              FC.BinOp(p, op, putOpCast ctx ty1 ty1' f1, putOpCast ctx ty2 ty2' f2),
               ty3
             else failwith ("binop: second arg not as expected")
           else failwith ("binop: first arg not as expected")
-       | IfExp(e1, e2, e3) ->
+       | IfExp(p, e1, e2, e3) ->
           let f1, t1 = translate ctx e1 in
           (match t1 with
              Bool -> let (f2, ty2) = translate ctx e2 in
                      let (f3, ty3) = translate ctx e3 in
-                     if ty2 = ty3 then FC.IfExp(f1, f2, f3), ty2
+                     if ty2 = ty3 then FC.IfExp(p, f1, f2, f3), ty2
                      else failwith "if: types of branches do not match"
            | _ -> failwith "if: type of test not of Bool")
-       | FunExp(id, ty, e0) ->
+       | FunExp(p, id, ty, e0) ->
           let f0, tybody = translate ((id, VDecl ty)::ctx) e0 in
-          FC.FunExp(id, ty, f0), Arr(ty, typeShift (-1) 0 tybody)
-       | AppExp(e1, e2) ->
+          FC.FunExp(p, id, ty, f0), Arr(ty, typeShift (-1) 0 tybody)
+       | AppExp(p, e1, e2) ->
           let f1, ty1 = translate ctx e1 in
           let f1, ty11, ty12 = matchingFun f1 ty1 in
           let f2, ty2 = translate ctx e2 in
-          if ty11 = ty2 then FC.AppExp(f1, f2), ty12
+          if ty11 = ty2 then FC.AppExp(p, f1, f2), ty12
           else if con ctx ty11 ty2 then
-            FC.AppExp(f1, FC.CastExp(f2, ty2, ty11)), ty12
+            FC.AppExp(p, f1, FC.CastExp(FC.tmPos f2, f2, ty2, ty11)), ty12
           else failwith "app: the type of arg isn't consistent with the expected argument type"
-       | TFunExp(id, e0) ->
+       | TFunExp(p, id, e0) ->
           let flag = ref true in
           let f0, ty0 = translate ((id,PossiblySTVar flag)::ctx) e0 in
-          (if !flag then FC.TSFunExp(id, f0) else FC.TGFunExp(id, f0)),
+          (if !flag then FC.TSFunExp(p, id, f0) else FC.TGFunExp(p, id, f0)),
           Forall(id, ty0)
-       | TAppExp(e1, ty) ->
+       | TAppExp(p, e1, ty) ->
           let f1, ty1 = translate ctx e1 in
           let f1', ty1' = matchingTFun f1 ty1 in
-          FC.TAppExp(f1', ty), typeInst ty1' ty
-       | AscExp(e1, ty) ->
+          FC.TAppExp(p, f1', ty), typeInst ty1' ty
+       | AscExp(p, e1, ty) ->
           let f1, ty1 = translate ctx e1 in
-          if con ctx ty1 ty then FC.CastExp(f1, ty1, ty), ty
+          if con ctx ty1 ty then FC.CastExp(p, f1, ty1, ty), ty
           else failwith "Ascription: not compatible"
-       | CastExp(e1, ty1, ty2) ->
+       | CastExp(p, e1, ty1, ty2) ->
           let f1, ty1' = translate ctx e1 in
           if ty1 = ty1' then
-            if con ctx ty1 ty2 then FC.CastExp(f1, ty1, ty2), ty2
+            if con ctx ty1 ty2 then FC.CastExp(p, f1, ty1, ty2), ty2
             else failwith "Cast: src and target not compatible"
           else  failwith "Cast: doesn't match the src type"
 

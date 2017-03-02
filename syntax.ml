@@ -1,3 +1,5 @@
+open Support.Error
+
 type id = string
 
 type ty =
@@ -56,40 +58,56 @@ type op = Plus | Mult | Lt
 
 module FG =
   struct
+    open Lexing
     type term =
-      Var of int
-    | IConst of int
-    | BConst of bool
-    | BinOp of op * term * term
-    | IfExp of term * term * term
-    | FunExp of id * ty * term
-    | AppExp of term * term
-    | TFunExp of id * term  (* the body must be a syntactic value and parameter is not needed *)
-    | TAppExp of term * ty
-    | AscExp of term * ty (* type ascription *)
-    | CastExp of term * ty * ty
+      Var of position * int
+    | IConst of position * int
+    | BConst of position * bool
+    | BinOp of position * op * term * term
+    | IfExp of position * term * term * term
+    | FunExp of position * id * ty * term
+    | AppExp of position * term * term
+    | TFunExp of position * id * term  (* the body must be a syntactic value and parameter is not needed *)
+    | TAppExp of position * term * ty
+    | AscExp of position * term * ty (* type ascription *)
+    | CastExp of position * term * ty * ty
 
     type program =
       Prog of term
     | Decl of id * ty * term
-  end
+
+    let tmPos = function
+        (Var(p, _) | IConst(p, _) | BConst(p, _) | BinOp(p, _, _, _)
+         | IfExp(p, _, _, _) | FunExp(p, _, _, _)
+         | AppExp(p, _, _) | TFunExp(p, _, _) | TAppExp(p, _, _)
+         | AscExp(p, _, _) | CastExp(p, _, _, _))
+        -> p
+end
 
 module FC =
   struct
+    open Lexing
     type term =
-      Var of int
-    | IConst of int
-    | BConst of bool
-    | BinOp of op * term * term
-    | IfExp of term * term * term
-    | FunExp of id * ty * term
-    | AppExp of term * term
-    | TSFunExp of id * term  (* the body must be a syntactic value and parameter is not needed *)
-    | TGFunExp of id * term
-    | TAppExp of term * ty
-    | CastExp of term * ty * ty
+      Var of position * int
+    | IConst of position * int
+    | BConst of position * bool
+    | BinOp of position * op * term * term
+    | IfExp of position * term * term * term
+    | FunExp of position * id * ty * term
+    | AppExp of position * term * term
+    | TSFunExp of position * id * term  (* the body must be a syntactic value and parameter is not needed *)
+    | TGFunExp of position * id * term
+    | TAppExp of position * term * ty
+    | CastExp of position * term * ty * ty
 
     type program =
       Prog of term
     | Decl of id * ty * term
+                          
+    let tmPos = function
+        (Var(p, _) | IConst(p, _) | BConst(p, _) | BinOp(p, _, _, _)
+         | IfExp(p, _, _, _) | FunExp(p, _, _, _)
+         | AppExp(p, _, _) | TSFunExp(p, _, _) | TGFunExp(p, _, _)
+         | TAppExp(p, _, _) | CastExp(p, _, _, _))
+        -> p
   end

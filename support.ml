@@ -7,6 +7,10 @@ struct
 
   type 'a with_pos = {p:position; v:'a}
 
+  type range = {frm:position; to_:position}
+
+  let join_range r1 r2 = {frm=r1.frm; to_=r2.to_}
+
   let print_pos pos =
     (if pos.pos_fname = "" then
       eprintf "line %d, character %d"
