@@ -57,6 +57,8 @@ aExpr :
   | LPAREN e=expr RPAREN { e }
   | LPAREN e=expr COLON tgt=ty RPAREN
       { fun ctx -> AscExp(e ctx, tgt ctx) }
+  | LPAREN e=expr COLON src=ty DARROW tgt=ty RPAREN
+      { fun ctx -> CastExp(e ctx, src ctx, tgt ctx) }
 
 ifExpr :
     IF e1=expr THEN e2=expr ELSE e3=expr

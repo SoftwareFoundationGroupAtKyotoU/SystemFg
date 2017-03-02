@@ -220,6 +220,12 @@ module FC =
           let f1, ty1 = translate ctx e1 in
           if con ctx ty1 ty then FC.CastExp(f1, ty1, ty), ty
           else failwith "Ascription: not compatible"
+       | CastExp(e1, ty1, ty2) ->
+          let f1, ty1' = translate ctx e1 in
+          if ty1 = ty1' then
+            if con ctx ty1 ty2 then FC.CastExp(f1, ty1, ty2), ty2
+            else failwith "Cast: src and target not compatible"
+          else  failwith "Cast: doesn't match the src type"
 
      let translateDecl ctx = function
          Prog e ->
