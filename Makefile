@@ -1,3 +1,5 @@
+MENHIR=menhir
+MENHIROPTIONS=--infer --dump
 OCAMLC=ocamlc
 OCAMLOPT=ocamlopt
 OCAMLDEP=ocamldep
@@ -37,7 +39,7 @@ meta:
 
 gtfparser.ml gtfparser.mli: gtfparser.mly	
 	@rm -f $@
-	$(OCAMLYACC) $(OCAMLYACCOPTIONS) $<
+	$(MENHIR) $(MENHILOPTIONS) $< 
 	@chmod -w $@
 
 gtflexer.ml: gtflexer.mll
