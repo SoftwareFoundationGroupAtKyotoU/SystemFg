@@ -47,10 +47,14 @@ let rec containsDyn = function
 let rec con ctx ty1 ty2 =
   ty1 = ty2 ||
     match ty1, ty2 with
-      Arr(tys1, tyt1), Arr(tys2, tyt2) -> con ctx tys1 tys2 && con ctx tyt1 tyt2
-    | Forall(id, ty1'), Forall(_, ty2') -> con ((id,STVar)::ctx) ty1' ty2'
-    | Forall(id, ty1'), _ -> containsDyn ty2 && con ((id,GTVar)::ctx) ty1' (typeShift 1 0 ty2)
-    | _, Forall(id, ty2') -> containsDyn ty1 && con ((id,GTVar)::ctx) (typeShift 1 0 ty1) ty2'
+      Arr(tys1, tyt1), Arr(tys2, tyt2) ->
+        con ctx tys1 tys2 && con ctx tyt1 tyt2
+    | Forall(id, ty1'), Forall(_, ty2') ->
+       con ((id,STVar)::ctx) ty1' ty2'
+    | Forall(id, ty1'), _ ->
+       containsDyn ty2 && con ((id,GTVar)::ctx) ty1' (typeShift 1 0 ty2)
+    | _, Forall(id, ty2') ->
+       containsDyn ty1 && con ((id,GTVar)::ctx) (typeShift 1 0 ty1) ty2'
     | Dyn, _ -> forall (isGradual ctx) (freeTVs ty2)
     | _, Dyn -> forall (isGradual ctx) (freeTVs ty1)
     | _ -> false
@@ -136,16 +140,14 @@ module FC =
      let rec con ctx ty1 ty2 =
        ty1 = ty2 ||
          match ty1, ty2 with
-           Arr(tys1, tyt1), Arr(tys2, tyt2)
-           -> con ctx tys1 tys2 && con ctx tyt1 tyt2
-         | Forall(id, ty1'), Forall(_, ty2')
-           -> con ((id,STVar)::ctx) ty1' ty2'
-         | Forall(id, ty1'), _
-           -> containsDyn ty2
-              && con ((id,GTVar)::ctx) ty1' (typeShift 1 0 ty2)
-         | _, Forall(id, ty2')
-           -> containsDyn ty1
-              && con ((id,GTVar)::ctx) (typeShift 1 0 ty1) ty2'
+           Arr(tys1, tyt1), Arr(tys2, tyt2) ->
+            con ctx tys1 tys2 && con ctx tyt1 tyt2
+         | Forall(id, ty1'), Forall(_, ty2') ->
+            con ((id,STVar)::ctx) ty1' ty2'
+         | Forall(id, ty1'), _ ->
+            containsDyn ty2 && con ((id,GTVar)::ctx) ty1' (typeShift 1 0 ty2)
+         | _, Forall(id, ty2') ->
+            containsDyn ty1 && con ((id,GTVar)::ctx) (typeShift 1 0 ty1) ty2'
          | Dyn, _ -> forall (isGradualOrMakeItGradual ctx) (freeTVs ty2)
          | _, Dyn -> forall (isGradualOrMakeItGradual ctx) (freeTVs ty1)
          | _ -> false
@@ -156,8 +158,9 @@ module FC =
        | _ -> failwith ("Type does not match with -> or *")
 
      let matchingTFun f1 = function
-         Dyn -> let ty = Forall("dummy", Dyn) in
-                FC.CastExp(f1, Dyn, ty), Dyn
+         Dyn ->
+          let ty = Forall("dummy", Dyn) in
+          FC.CastExp(f1, Dyn, ty), Dyn
        | Forall(_,ty11) -> f1, ty11
        | _ -> failwith ("Type does not match with forall or *")
 
