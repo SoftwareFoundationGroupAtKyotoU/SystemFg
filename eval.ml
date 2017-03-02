@@ -114,13 +114,13 @@ and (==>) t1 t2 p plr = match t1, t2 with  (* cast interpretation *)
      fun env v -> (match v with
                      Tagged(B, v0) -> v0
                    | Tagged(_, _) -> err msg
-                   | _ -> err "Can't happen (Untagged value)")
+                   | _ -> errAt p "Can't happen (Untagged value)")
   | Dyn, Arr(Dyn,Dyn) ->
      let msg = errMsg_of_polarity p plr in
      fun env v -> (match v with
                    | Tagged(Ar, v0) -> v0
                    | Tagged(_, _) -> err msg
-                   | _ -> err "Can't happen (Untagged value)")
+                   | _ -> errAt p "Can't happen (Untagged value)")
   | Dyn, TyVar id ->
      let msg = errMsg_of_polarity p plr in
      fun env v -> (match v with
