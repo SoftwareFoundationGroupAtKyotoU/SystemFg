@@ -1,4 +1,5 @@
 open Syntax
+open FC
 open Eval
 
 let rec eval = function

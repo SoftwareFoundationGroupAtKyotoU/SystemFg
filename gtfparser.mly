@@ -1,5 +1,6 @@
 %{
 open Syntax
+open FC
 %}
 
 %token LPAREN RPAREN LBRACKET RBRACKET SEMISEMI RARROW DARROW COLON DOT
@@ -12,7 +13,7 @@ open Syntax
 %token <Syntax.id> GTVarID
 
 %start toplevel
-%type <Syntax.tyenv -> Syntax.program> toplevel
+%type <Syntax.tyenv -> Syntax.FC.program> toplevel
 %%
 
 toplevel :

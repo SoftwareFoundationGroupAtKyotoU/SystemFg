@@ -52,21 +52,23 @@ let rec pp_ty ctx = function
   | Dyn -> "*"
           
 type op = Plus | Mult | Lt
-                          
-type term =
-  Var of int
-| IConst of int
-| BConst of bool
-| BinOp of op * term * term
-| IfExp of term * term * term
-| FunExp of id * ty * term
-| AppExp of term * term
-| TSFunExp of id * term  (* the body must be a syntactic value and parameter is not needed *)
-| TGFunExp of id * term
-| TAppExp of term * ty
-| CastExp of term * ty * ty 
 
-type program =
-  Prog of term
-| Decl of id * ty * term
+module FC =
+  struct
+    type term =
+      Var of int
+    | IConst of int
+    | BConst of bool
+    | BinOp of op * term * term
+    | IfExp of term * term * term
+    | FunExp of id * ty * term
+    | AppExp of term * term
+    | TSFunExp of id * term  (* the body must be a syntactic value and parameter is not needed *)
+    | TGFunExp of id * term
+    | TAppExp of term * ty
+    | CastExp of term * ty * ty
 
+    type program =
+      Prog of term
+    | Decl of id * ty * term
+  end

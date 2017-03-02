@@ -1,4 +1,5 @@
 open Syntax
+open FC
 
 type tag = I | B | Ar | TV of unit ref (* aka ground types *)
 
