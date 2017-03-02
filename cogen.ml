@@ -124,7 +124,7 @@ and (==>) t1 t2 p plr = match t1, t2 with  (* cast interpretation *)
                      | _ -> errAt .~p "Can't happen (Not polyfun)" >.
   | ty1, Forall(id2, ty2) ->
      let bodycast = (ty1 ==> ty2) p plr in
-     fun env v -> .< TFun (fun () -> .~(bodycast .< TB(ref (), .~env) >. v)) >.
+     fun env v -> .< TFun (fun () -> let r = ref () in .~(bodycast .< TB(r, .~env) >. v)) >.
   | Forall(id1, ty1), ty2 ->
      let bodycast = (typeInst ty1 Dyn ==> ty2) p plr in
      let p = lift_pos p in
