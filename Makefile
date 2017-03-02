@@ -13,7 +13,7 @@ OCAMLOPTOPTIONS=$(INCLUDES) # add other options for ocamlopt here
 PROGNAME=pbci
 
 # The list of object files
-COMMONOBJS=syntax.cmx gtfparser.cmx gtflexer.cmx typing.cmx eval.cmx
+COMMONOBJS=support.cmx syntax.cmx gtfparser.cmx gtflexer.cmx typing.cmx eval.cmx
 OBJS=$(COMMONOBJS) main.cmx
 METAOBJS=$(COMMONOBJS) cogen.cmx metamain.cmx
 
