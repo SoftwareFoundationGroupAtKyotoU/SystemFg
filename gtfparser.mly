@@ -4,33 +4,10 @@ open Syntax
 open FG
 %}
 
-%token <Lexing.position> LPAREN
-%token <Lexing.position> RPAREN
-%token <Lexing.position> LBRACKET
-%token <Lexing.position> RBRACKET
-%token <Lexing.position> SEMISEMI
-%token <Lexing.position> RARROW
-%token <Lexing.position> DARROW
-%token <Lexing.position> COLON
-%token <Lexing.position> DOT
-
-%token <Lexing.position> PLUS
-%token <Lexing.position> AST
-%token <Lexing.position> LT
-%token <Lexing.position> EQ
-
-%token <Lexing.position> IF
-%token <Lexing.position> THEN
-%token <Lexing.position> ELSE
-%token <Lexing.position> TRUE
-%token <Lexing.position> FALSE
-%token <Lexing.position> LET
-%token <Lexing.position> IN
-%token <Lexing.position> FUN
-%token <Lexing.position> REC
-%token <Lexing.position> INT
-%token <Lexing.position> BOOL
-%token <Lexing.position> ALL
+%token <Lexing.position> LPAREN RPAREN LBRACKET RBRACKET SEMISEMI
+%token <Lexing.position> RARROW DARROW COLON DOT
+%token <Lexing.position> PLUS AST LT EQ
+%token <Lexing.position> IF THEN ELSE TRUE FALSE LET IN FUN REC INT BOOL ALL
 
 %token <int Support.Error.with_pos> INTV
 %token <Syntax.id Support.Error.with_pos> LCID
