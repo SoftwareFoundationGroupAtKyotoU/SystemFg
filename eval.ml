@@ -19,19 +19,19 @@ type polarity = Pos | Neg
 
 let neg = function Pos -> Neg | Neg -> Pos
 
-let errMsg_of_polarity = function
-    Pos -> "Blame to the expression side"
-  | Neg -> "Blame to the enviroment side"
+let errMsg_of_polarity p = function
+    Pos -> string_of_pos p ^ "\nBlame to the expression side"
+  | Neg -> string_of_pos p ^ "\nBlame to the enviroment side"
                         
-let rec lookup p idx = function
-    Empty -> errAt p ("Can't happen (unbound var : " ^ string_of_int idx ^")")
-  | VB (v, env) -> if idx = 0 then v else lookup p (idx-1) env
-  | TB (_, env) -> lookup p (idx-1) env
+let rec lookup idx = function
+    Empty -> err ("Can't happen (unbound var : " ^ string_of_int idx ^")")
+  | VB (v, env) -> if idx = 0 then v else lookup (idx-1) env
+  | TB (_, env) -> lookup (idx-1) env
 
-let rec lookupty p idx = function
-    Empty -> errAt p ("Can't happen (unbound tyvar: " ^ string_of_int idx ^ ")")
-  | VB (_, env) -> lookupty p (idx-1) env
-  | TB (v, env) -> if idx = 0 then v else lookupty p (idx-1) env
+let rec lookupty idx = function
+    Empty -> err ("Can't happen (unbound tyvar: " ^ string_of_int idx ^ ")")
+  | VB (_, env) -> lookupty (idx-1) env
+  | TB (v, env) -> if idx = 0 then v else lookupty (idx-1) env
 
 (* eval : term -> env -> value
    (==>) : ty -> ty -> env -> value -> value
@@ -44,7 +44,7 @@ let rec lookupty p idx = function
  and env -> value -> value, respectively.  *)
 
 let rec eval = function
-    Var(p, idx) -> fun env -> lookup p idx env
+    Var(p, idx) -> fun env -> lookup idx env
   | IConst(_,i) -> fun env -> IntV i
   | BConst(_,b) -> fun env -> BoolV b
   | BinOp(p, op, e1, e2) ->
@@ -102,28 +102,32 @@ and (==>) t1 t2 p plr = match t1, t2 with  (* cast interpretation *)
   | Int, Dyn -> fun env v -> Tagged (I, v)
   | Bool, Dyn -> fun env v -> Tagged (B, v)
   | Arr(Dyn,Dyn), Dyn -> fun env v -> Tagged (Ar, v)
-  | TyVar id, Dyn -> fun env v -> Tagged (TV (lookupty p id env), v)
+  | TyVar id, Dyn -> fun env v -> Tagged (TV (lookupty id env), v)
   | Dyn, Int ->
+     let msg = errMsg_of_polarity p plr in
      fun env v -> (match v with
                      Tagged(I, v0) -> v0
-                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr)
+                   | Tagged(_, _) -> err msg
                    | _ -> errAt p "Can't happen (Untagged value)")
   | Dyn, Bool ->
+     let msg = errMsg_of_polarity p plr in
      fun env v -> (match v with
                      Tagged(B, v0) -> v0
-                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr)
-                   | _ -> errAt p "Can't happen (Untagged value)")
+                   | Tagged(_, _) -> err msg
+                   | _ -> err "Can't happen (Untagged value)")
   | Dyn, Arr(Dyn,Dyn) ->
+     let msg = errMsg_of_polarity p plr in
      fun env v -> (match v with
                    | Tagged(Ar, v0) -> v0
-                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr)
-                   | _ -> errAt p "Can't happen (Untagged value)")
+                   | Tagged(_, _) -> err msg
+                   | _ -> err "Can't happen (Untagged value)")
   | Dyn, TyVar id ->
+     let msg = errMsg_of_polarity p plr in
      fun env v -> (match v with
                    | Tagged(TV r, v0) ->
-                      if lookupty p id env == r then v0
-                      else errAt p (errMsg_of_polarity plr)
-                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr)
+                      if lookupty id env == r then v0
+                      else err msg
+                   | Tagged(_, _) -> err msg
                    | _ -> errAt p "Can't happen (Untagged value)")
   | Arr(s1,t1), Arr(s2,t2) ->
      let argcast = (s2 ==> s1) p (neg plr) in

@@ -14,8 +14,16 @@ struct
   let print_pos pos =
     (if pos.pos_fname = "" then
       eprintf "line %d, character %d"
-      else
-	eprintf "File \"%s\", line %d, character %d" pos.pos_fname)
+     else
+       eprintf "File \"%s\", line %d, character %d" pos.pos_fname)
+      pos.pos_lnum
+      (pos.pos_cnum - pos.pos_bol)
+
+  let string_of_pos pos =
+    (if pos.pos_fname = "" then
+       Printf.sprintf "line %d, character %d"
+     else
+       Printf.sprintf "File \"%s\", line %d, character %d" pos.pos_fname)
       pos.pos_lnum
       (pos.pos_cnum - pos.pos_bol)
 
@@ -31,7 +39,7 @@ struct
 
   let err s =
     eprintf "\n%s\n" s;
-    exit 2
+    failwith ""
 
   let errAt pos s =
     eprintf "\n";

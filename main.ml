@@ -17,7 +17,7 @@ let rec read_eval_print lexeme env tyenv =
       print_newline();
       newenv, newtyenv
     with Parsing.Parse_error -> print_string "Parse error\n"; env, tyenv
-       | Failure s -> print_string s; print_newline(); env, tyenv
+       | Failure _ -> env, tyenv
        | _ -> env, tyenv
   in 
   read_eval_print lexeme newenv newtyenv
