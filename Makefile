@@ -1,23 +1,24 @@
 OCAMLC=ocamlc
 OCAMLOPT=ocamlopt
 OCAMLDEP=ocamldep
-OCAMLYACC=ocamlyacc
 OCAMLLEX=ocamllex
+OCAMLYACC=ocamlyacc
+OCAMLYACCOPTIONS=-v
 INCLUDES=                 # all relevant -I options here
-OCAMLFLAGS=$(INCLUDES)    # add other options for ocamlc here
-OCAMLOPTFLAGS=$(INCLUDES) # add other options for ocamlopt here
+OCAMLOPTIONS=$(INCLUDES)    # add other options for ocamlc here
+OCAMLOPTOPTIONS=$(INCLUDES) # add other options for ocamlopt here
 
 PROGNAME=pbci
 
 # The list of object files
-COMMONOBJS=syntax.cmx parserx.cmx lexerx.cmx typing.cmx eval.cmx
+COMMONOBJS=syntax.cmx gtfparser.cmx gtflexer.cmx typing.cmx eval.cmx
 OBJS=$(COMMONOBJS) main.cmx
 METAOBJS=$(COMMONOBJS) cogen.cmx metamain.cmx
 
-DEPEND += lexerx.ml parserx.ml
+DEPEND += gtflexer.ml gtfparser.ml
 
 all: $(DEPEND) $(OBJS)
-	$(OCAMLOPT) -o $(PROGNAME) $(OCAMLFLAGS) $(OBJS)
+	$(OCAMLOPT) -o $(PROGNAME) $(OCAMLOPTIONS) $(OBJS)
 
 meta:
 	$(MAKE) OCAMLOPT=metaocamlopt OCAMLC=metaocamlc OBJS="$(METAOBJS)" all
@@ -26,22 +27,22 @@ meta:
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
 
 .ml.cmo:
-	$(OCAMLC) $(OCAMLFLAGS) -c $<
+	$(OCAMLC) $(OCAMLOPTIONS) -c $<
 
 .mli.cmi:
-	$(OCAMLC) $(OCAMLFLAGS) -c $<
+	$(OCAMLC) $(OCAMLOPTIONS) -c $<
 
 .ml.cmx:
-	$(OCAMLOPT) $(OCAMLOPTFLAGS) -c $<
+	$(OCAMLOPT) $(OCAMLOPTOPTIONS) -c $<
 
-parserx.ml parserx.mli: parser.mly	
+gtfparser.ml gtfparser.mli: gtfparser.mly	
 	@rm -f $@
-	$(OCAMLYACC) -v -b parserx $< 
+	$(OCAMLYACC) $(OCAMLYACCOPTIONS) $<
 	@chmod -w $@
 
-lexerx.ml: lexer.mll
+gtflexer.ml: gtflexer.mll
 	@rm -f $@
-	$(OCAMLLEX) -o lexerx.ml $<
+	$(OCAMLLEX) -o gtflexer.ml $<
 	@chmod -w $@
 
 # Clean up

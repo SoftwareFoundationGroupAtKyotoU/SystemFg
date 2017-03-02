@@ -7,7 +7,7 @@ let rec read_eval_print lexeme env tyenv =
   flush stdout;
   let newenv, newtyenv =
     try
-      let decl = Parserx.toplevel Lexerx.main lexeme in
+      let decl = Gtfparser.toplevel Gtflexer.main lexeme in
       let ty = typingDecl tyenv (decl tyenv) in
       let (id, v, newenv, newtyenv) = eval_decl env tyenv (decl tyenv) in
       print_string (id ^ " : ");
