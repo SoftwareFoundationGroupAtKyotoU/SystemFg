@@ -15,6 +15,14 @@ and env =
 | VB of value * env
 | TB of unit ref * env
 
+type polarity = Pos | Neg
+
+let neg = function Pos -> Neg | Neg -> Pos
+
+let errMsg_of_polarity = function
+    Pos -> "Blame to the expression side"
+  | Neg -> "Blame to the enviroment side"
+                        
 let rec lookup p idx = function
     Empty -> errAt p ("Can't happen (unbound var : " ^ string_of_int idx ^")")
   | VB (v, env) -> if idx = 0 then v else lookup p (idx-1) env
@@ -81,9 +89,9 @@ let rec eval = function
       | _ -> errAt p "Can't happen (application of non-tyabs")
   | CastExp (p, e, ty1, ty2) ->
      let v = eval e in
-     let cast = (ty1 ==> ty2) p in
+     let cast = (ty1 ==> ty2) p Pos in
      fun env -> cast env (v env)
-and (==>) t1 t2 p = match t1, t2 with  (* cast interpretation *)
+and (==>) t1 t2 p plr = match t1, t2 with  (* cast interpretation *)
     Int, Int -> fun env v -> v
   | Arr(Dyn,Dyn), Arr(Dyn,Dyn) -> fun env v -> v
   | TyVar id1, TyVar id2 ->
@@ -98,50 +106,50 @@ and (==>) t1 t2 p = match t1, t2 with  (* cast interpretation *)
   | Dyn, Int ->
      fun env v -> (match v with
                      Tagged(I, v0) -> v0
-                   | Tagged(_, _) -> failwith "Blame!"
+                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr)
                    | _ -> errAt p "Can't happen (Untagged value)")
   | Dyn, Bool ->
      fun env v -> (match v with
                      Tagged(B, v0) -> v0
-                   | Tagged(_, _) -> failwith "Blame!"
+                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr)
                    | _ -> errAt p "Can't happen (Untagged value)")
   | Dyn, Arr(Dyn,Dyn) ->
      fun env v -> (match v with
                    | Tagged(Ar, v0) -> v0
-                   | Tagged(_, _) -> failwith "Blame!"
+                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr)
                    | _ -> errAt p "Can't happen (Untagged value)")
   | Dyn, TyVar id ->
      fun env v -> (match v with
                    | Tagged(TV r, v0) ->
                       if lookupty p id env == r then v0
-                      else failwith "Blame!"
-                   | Tagged(_, _) -> failwith "Blame!"
+                      else errAt p (errMsg_of_polarity plr)
+                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr)
                    | _ -> errAt p "Can't happen (Untagged value)")
   | Arr(s1,t1), Arr(s2,t2) ->
-     let argcast = (s2 ==> s1) p in
-     let rescast = (t1 ==> t2) p in
+     let argcast = (s2 ==> s1) p (neg plr) in
+     let rescast = (t1 ==> t2) p plr in
      (fun env -> function
         Fun f -> Fun (fun w -> let arg = argcast env w in
                                  rescast env (f arg))
       | _ -> errAt p "Can't happen (Non-procedure value)")
   | Forall(id1, t1), Forall(id2, t2) ->
-     let bodycast = (t1 ==> t2) p in
+     let bodycast = (t1 ==> t2) p plr in
      (fun env -> function
         TFun f -> TFun (fun () -> bodycast env (f ()))
       | _ -> errAt p "Can't happen (Not polyfun)")
   | ty1, Forall(id2, ty2) ->
-     let bodycast = (ty1 ==> ty2) p in
+     let bodycast = (ty1 ==> ty2) p plr in
      fun env v -> TFun (fun () -> bodycast (TB(ref (), env)) v)
   | Forall(id1, ty1), ty2 ->
-     let bodycast = (typeInst ty1 Dyn ==> ty2) p in
+     let bodycast = (typeInst ty1 Dyn ==> ty2) p plr in
      (fun env -> function
         TFun f -> bodycast env (f ())
       | _ -> errAt p "Can't happen (Not polyfun)")
   | Arr(s1,t1) as ty, Dyn ->
-     let cast = (ty ==> Arr(Dyn, Dyn)) p in
+     let cast = (ty ==> Arr(Dyn, Dyn)) p plr in
      fun env v -> Tagged (Ar, cast env v)
   | Dyn, (Arr(s, t) as ty) ->
-     let cast = (Arr(Dyn,Dyn) ==> ty) p in
+     let cast = (Arr(Dyn,Dyn) ==> ty) p plr in
      fun env v -> cast env (Tagged (Ar, v))
   | _, _ -> errAt p "Can't happen!"
 
