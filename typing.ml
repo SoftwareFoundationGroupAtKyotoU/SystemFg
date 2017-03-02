@@ -10,7 +10,7 @@ let rec isGradual ctx i =
   match List.nth ctx i with
     (_, STVar) -> false
   | (_, GTVar) -> true
-  | (id, _) -> failwith ("isStatic: cannot happen -- " ^ id)
+  | (id, _) -> failwith ("isGradual: cannot happen -- " ^ id)
 
 let rec merge l1 l2 =
   match l1, l2 with
