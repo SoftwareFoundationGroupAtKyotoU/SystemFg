@@ -1,5 +1,5 @@
 MENHIR=menhir
-MENHIROPTIONS=--infer --dump
+MENHIROPTIONS=--dump
 OCAMLC=ocamlc
 OCAMLOPT=ocamlopt
 OCAMLDEP=ocamldep
@@ -50,7 +50,7 @@ gtflexer.ml: gtflexer.mll
 # Clean up
 clean:
 	rm -f $(PROGNAME)
-	rm -f *.cm[iox] *.o *~ parserx.ml parserx.mli parser.output lexerx.ml .depend
+	rm -f *.cm[iox] *.o *~ gtfparser.ml gtfparser.mli gtfparser.output gtflexer.ml .depend
 
 # Dependencies
 depend:: $(DEPEND)
