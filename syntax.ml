@@ -12,6 +12,7 @@ type binding =
 | VDecl of ty
 | STVar
 | GTVar
+| PossiblySTVar of bool ref
   
 type tyenv = (id * binding) list
 
@@ -48,10 +49,28 @@ let rec pp_ty ctx = function
   | Arr(ty1, ty2) -> "(" ^ pp_ty ctx ty1 ^ "->" ^ pp_ty ctx ty2 ^ ")"
   (*     "Arr("^pp_ty ctx ty1^","^pp_ty ctx ty2^")" *)
   | TyVar i -> fst (List.nth ctx i)
-  | Forall(id, ty0) -> "(All "^id^". "^pp_ty ((id,GTVar)::ctx) ty0^")"
+  | Forall(id, ty0) -> "(All "^id^". "^pp_ty ((id,STVar)::ctx) ty0^")"
   | Dyn -> "*"
           
 type op = Plus | Mult | Lt
+
+module FG =
+  struct
+    type term =
+      Var of int
+    | IConst of int
+    | BConst of bool
+    | BinOp of op * term * term
+    | IfExp of term * term * term
+    | FunExp of id * ty * term
+    | AppExp of term * term
+    | TFunExp of id * term  (* the body must be a syntactic value and parameter is not needed *)
+    | TAppExp of term * ty
+
+    type program =
+      Prog of term
+    | Decl of id * ty * term
+  end
 
 module FC =
   struct

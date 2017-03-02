@@ -4,12 +4,14 @@ let rec isStatic ctx i =
   match List.nth ctx i with
     (_, STVar) -> true
   | (_, GTVar) -> false
+  | (_, PossiblySTVar f) -> !f
   | (id, _) -> failwith ("isStatic: cannot happen -- " ^ id)
 
 let rec isGradual ctx i =
   match List.nth ctx i with
     (_, STVar) -> false
   | (_, GTVar) -> true
+  | (_, PossiblySTVar f) -> not !f
   | (id, _) -> failwith ("isGradual: cannot happen -- " ^ id)
 
 let rec merge l1 l2 =
@@ -111,5 +113,98 @@ module FC =
       | Decl(_, ty, e) ->
          let tye = typeOf ctx e in
          if ty = tye then ty
+         else failwith "let: the type of exp isn't as declared"
+  end
+
+ module FG =
+   struct
+     open Syntax
+     open Syntax.FG
+    let freeze tenv = List.map
+                        (function
+                           (id, GTVar, {contents=false}) -> (id, STVar)
+                         | (id, k, _) -> (id, k))
+                        tenv
+
+    let isGradualOrMakeItGradual ctx i =
+      match List.nth ctx i with
+        (_, STVar) -> false
+      | (_, GTVar) -> true
+      | (_, PossiblySTVar f) -> f := false; true
+      | (id, _) -> failwith ("isGradual: cannot happen -- " ^ id)
+      
+    let rec con ctx ty1 ty2 =
+      ty1 = ty2 ||
+        match ty1, ty2 with
+          Arr(tys1, tyt1), Arr(tys2, tyt2) -> con ctx tys1 tys2 && con ctx tyt1 tyt2
+        | Forall(id, ty1'), Forall(_, ty2') -> con ((id,STVar)::ctx) ty1' ty2'
+        | Forall(id, ty1'), _ -> containsDyn ty2 && con ((id,GTVar)::ctx) ty1' (typeShift 1 0 ty2)
+        | _, Forall(id, ty2') -> containsDyn ty1 && con ((id,GTVar)::ctx) (typeShift 1 0 ty1) ty2'
+        | Dyn, _ -> forall (isGradualOrMakeItGradual ctx) (freeTVs ty2)
+        | _, Dyn -> forall (isGradualOrMakeItGradual ctx) (freeTVs ty1)
+        | _ -> false
+
+    let matchingFun f1 = function
+        Dyn -> FC.CastExp(f1, Dyn, Arr(Dyn, Dyn)), Dyn, Dyn
+      | Arr(dom,cod) -> f1, dom, cod
+      | _ -> failwith ("Type does not match with -> or *")
+
+    let matchingTFun f1 = function
+        Dyn -> let ty = Forall("dummy", Dyn) in
+               FC.CastExp(f1, Dyn, ty), Dyn
+      | Forall(_,ty11) -> f1, ty11
+      | _ -> failwith ("Type does not match with forall or *")
+
+    let rec translate ctx = function
+        Var i ->
+        (match List.nth ctx i with
+           (_, VDecl ty) -> FC.Var i, typeShift (i+1) 0 ty
+         | (id, _) -> failwith ("var: "^id^"is not a term variable!?"))
+      | IConst i -> FC.IConst i, Int
+      | BConst b -> FC.BConst b, Bool
+      | BinOp((Plus | Mult) as op, e1, e2) ->
+         let (f1, t1), (f2, t2) = translate ctx e1, translate ctx e2 in
+         (match t1, t2 with
+            Int, Int -> FC.BinOp(op, f1, f2), Int
+          | Int, _ -> failwith ("binop: second arg not of Int")
+          | _ ->  failwith ("binop: first arg not of Int"))
+      | BinOp(Lt, e1, e2) ->
+         let (f1, t1), (f2, t2) = translate ctx e1, translate ctx e2 in
+         (match t1, t2 with
+            Int, Int -> FC.BinOp(Lt, f1, f2), Bool
+          | Int, _ -> failwith ("binop: second arg not of Int")
+          | _ ->  failwith ("binop: first arg not of Int"))
+      | IfExp(e1, e2, e3) ->
+         let f1, t1 = translate ctx e1 in
+         (match t1 with
+            Bool -> let (f2, ty2), (f3, ty3) = translate ctx e2, translate ctx e3 in
+                    if ty2 = ty3 then FC.IfExp(f1, f2, f3), ty2
+                    else failwith "if: types of branches do not match"
+          | _ -> failwith "if: type of test not of Bool")
+      | FunExp(id, ty, e0) ->
+         let f0, tybody = translate ((id, VDecl ty)::ctx) e0 in
+         FC.FunExp(id, ty, f0), Arr(ty, typeShift (-1) 0 tybody)
+      | AppExp(e1, e2) ->
+         let f1, ty1 = translate ctx e1 in
+         let f1, ty11, ty12 = matchingFun f1 ty1 in
+         let f2, ty2 = translate ctx e2 in
+         if ty11 = ty2 then FC.AppExp(f1, f2), ty12
+         else if con ctx ty11 ty2 then FC.AppExp(f1, FC.CastExp(f2, ty2, ty11)), ty12
+         else failwith "app: the type of arg isn't consistent with the expected argument type"
+      | TFunExp(id, e0) ->
+         let flag = ref true in
+         let f0, ty0 = translate ((id,PossiblySTVar flag)::ctx) e0 in
+         (if !flag then FC.TSFunExp(id, f0) else FC.TGFunExp(id, f0)),
+         Forall(id, ty0)
+      | TAppExp(e1, ty) ->
+         let f1, ty1 = translate ctx e1 in
+         let f1', ty1' = matchingTFun f1 ty1 in
+         FC.TAppExp(f1', ty), typeInst ty1' ty
+
+    let translateDecl ctx = function
+        Prog e -> translate ctx e
+      | Decl(_, ty, e) ->
+         let f, tye = translate ctx e in
+         if ty = tye then f, ty
          else failwith "let: the type of exp isn't as declared"
   end
