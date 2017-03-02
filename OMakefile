@@ -148,6 +148,7 @@ eprintln($(CWD)/OMakefile is not configured)
 #
 
 COMMONFILES[] =
+    support
     syntax
     gtfparser
     gtflexer
