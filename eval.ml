@@ -33,9 +33,9 @@ type polarity = Pos | Neg
 
 let neg = function Pos -> Neg | Neg -> Pos
 
-let errMsg_of_polarity plr v = match plr with
-    Pos -> Printf.sprintf "Blame to the expression side %s" (string_of_val v)
-  | Neg -> Printf.sprintf "Blame to the enviroment side %s" (string_of_val v)
+let errMsg_of_polarity plr v tgt = match plr with
+    Pos -> Printf.sprintf "Blame to the expression side: %s => %s" (string_of_val v) tgt
+  | Neg -> Printf.sprintf "Blame to the enviroment side: %s => %s" (string_of_val v) tgt
 
 let rec lookup pos idx = function
     Empty -> errAt pos ("Can't happen (unbound var : " ^ string_of_int idx ^")")
@@ -120,24 +120,24 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
   | Dyn, Int ->
      fun env v -> (match v with
                      Tagged(I, v0) -> v0
-                   | Tagged(_, _) -> errBtw r (errMsg_of_polarity plr v)
+                   | Tagged(_, _) -> errBtw r (errMsg_of_polarity plr v "Int")
                    | _ -> errAt r.frm "Can't happen (Untagged value)")
   | Dyn, Bool ->
      fun env v -> (match v with
                      Tagged(B, v0) -> v0
-                   | Tagged(_, _) -> errBtw r (errMsg_of_polarity plr v)
+                   | Tagged(_, _) -> errBtw r (errMsg_of_polarity plr v "Bool")
                    | _ -> errAt r.frm "Can't happen (Untagged value)")
   | Dyn, Arr(Dyn,Dyn) ->
      fun env v -> (match v with
                    | Tagged(Ar, v0) -> v0
-                   | Tagged(_, _) -> errBtw r (errMsg_of_polarity plr v)
+                   | Tagged(_, _) -> errBtw r (errMsg_of_polarity plr v "*->*")
                    | _ -> errAt r.frm "Can't happen (Untagged value)")
   | Dyn, TyVar id ->
      fun env v -> (match v with
                    | Tagged(TV key, v0) ->
                       if lookupty r.frm id env == key then v0
-                      else errBtw r (errMsg_of_polarity plr v)
-                   | Tagged(_, _) -> errBtw r (errMsg_of_polarity plr v)
+                      else errBtw r (errMsg_of_polarity plr v "Y")
+                   | Tagged(_, _) -> errBtw r (errMsg_of_polarity plr v "Z")
                    | _ -> errAt r.frm "Can't happen (Untagged value)")
   | Arr(s1,t1), Arr(s2,t2) ->
      let argcast = (s2 ==> s1) r (neg plr) in
