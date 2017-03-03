@@ -13,9 +13,9 @@ struct
 
   let print_pos pos =
     (if pos.pos_fname = "" then
-      eprintf "line %d, character %d"
+       printf "line %d, character %d"
      else
-       eprintf "File \"%s\", line %d, character %d" pos.pos_fname)
+       printf "File \"%s\", line %d, character %d" pos.pos_fname)
       pos.pos_lnum
       (pos.pos_cnum - pos.pos_bol)
 
@@ -29,39 +29,39 @@ struct
 
   let print_2pos pos1 pos2 =
     (if pos1.pos_fname = "" then
-	eprintf "line %d, character %d -- line %d, character %d"
+	printf "line %d, character %d -- line %d, character %d"
       else
-	eprintf "File \"%s\", line %d, character %d -- line %d, character %d" pos1.pos_fname)
+	printf "File \"%s\", line %d, character %d -- line %d, character %d" pos1.pos_fname)
       pos1.pos_lnum
       (pos1.pos_cnum - pos1.pos_bol)
       pos2.pos_lnum
       (pos2.pos_cnum - pos2.pos_bol)
 
   let err s =
-    eprintf "\n%s\n" s;
+    printf "\n%s\n" s;
     failwith ""
 
   let errAt pos s =
-    eprintf "\n";
+    printf "\n";
     print_pos pos;
     err s
 
   let errBtw pos1 pos2 s =
-    eprintf "\n";
+    printf "\n";
     print_2pos pos1 pos2;
     err s
 
   let warning s =
-    eprintf "\n%s\n" s;
+    printf "\n%s\n" s;
     flush stderr
 
   let warningAt pos s =
-    eprintf "\n";
+    printf "\n";
     print_pos pos;
     warning s
 
   let warningBtw pos1 pos2 s =
-    eprintf "\n";
+    printf "\n";
     print_2pos pos1 pos2;
     warning s
 end
