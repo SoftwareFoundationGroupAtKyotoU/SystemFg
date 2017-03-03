@@ -15,17 +15,6 @@ and env =
 | VB of value * env
 | TB of unit ref * env
 
-let rec pp_val = function
-    IntV i -> print_int i
-  | BoolV true -> print_string "true"
-  | BoolV false -> print_string "false"
-  | Fun _ -> print_string "<fun>"
-  | TFun _ -> print_string "<tfun>"
-  | Tagged(I, v) -> pp_val v; print_string " : Int => *"
-  | Tagged(B, v) -> pp_val v; print_string " : Bool => *"
-  | Tagged(Ar, v) -> pp_val v; print_string " : *->* => *"
-  | Tagged(TV _, v) -> pp_val v; print_string " : X => *"
-
 let rec string_of_val = function
     IntV i -> string_of_int i
   | BoolV true -> "true"
@@ -37,6 +26,8 @@ let rec string_of_val = function
   | Tagged(Ar, v) -> Printf.sprintf "%s : *->* => *" (string_of_val v)
   | Tagged(TV _, v) -> Printf.sprintf "%s : X => *" (string_of_val v)
     (* TODO: recover the tyvar name *)
+
+let rec pp_val v = print_string (string_of_val v)
 
 type polarity = Pos | Neg
 
