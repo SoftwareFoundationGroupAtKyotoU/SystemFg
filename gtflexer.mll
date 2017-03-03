@@ -24,7 +24,7 @@ rule main = parse
   (* ignore spacing and newline characters *)
   [' ' '\t']+     { main lexbuf }
   (* ignore spacing and newline characters *)
-| [' ' '\t']* '\n'    { print_int (lexbuf.lex_curr_p.pos_cnum - lexbuf.lex_curr_p.pos_bol); Printf.printf "!\n"; new_line lexbuf; main lexbuf }
+| [' ' '\t']* '\n'    { new_line lexbuf; main lexbuf }
   (* ignore // and the following characters until the end of the line *)
 | "//" [^ '\n']* '\n' { new_line lexbuf; main lexbuf } 
 
