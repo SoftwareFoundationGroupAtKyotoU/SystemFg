@@ -16,9 +16,11 @@ let rec read_eval_print lexeme env tyenv =
       pp_val v;
       print_newline();
       newenv, newtyenv
-    with Parsing.Parse_error -> print_string "Parse error\n"; env, tyenv
+    with Gtfparser.Error ->
+         print_string "Parse error\n";
+         Lexing.flush_input lexeme;
+         env, tyenv
        | Failure _ -> env, tyenv
-       | _ -> env, tyenv
   in 
   read_eval_print lexeme newenv newtyenv
                     
