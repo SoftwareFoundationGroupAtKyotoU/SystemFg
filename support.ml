@@ -9,6 +9,10 @@ struct
 
   type range = {frm:position; to_:position}
 
+  type 'a with_ran = {r:range; v:'a}
+
+  let dummy_range = {frm=dummy_pos; to_=dummy_pos}
+
   let join_range r1 r2 = {frm=r1.frm; to_=r2.to_}
 
   let print_pos pos =
@@ -46,7 +50,7 @@ struct
     print_pos pos;
     err s
 
-  let errBtw pos1 pos2 s =
+  let errBtw {frm=pos1; to_=pos2} s =
     printf "\n";
     print_2pos pos1 pos2;
     err s

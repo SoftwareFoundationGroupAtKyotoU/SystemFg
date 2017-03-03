@@ -19,7 +19,7 @@ type binding =
 type tyenv = (id * binding) list
 
 let rec name2index ctx id = match ctx with
-    [] -> errAt id.p ("Unbound variable: " ^ id.v)
+    [] -> errBtw id.r ("Unbound variable: " ^ id.v)
   | (id', _) :: ctx' -> if id.v = id' then 0 else (name2index ctx' id) + 1
 
 let rec index2name ctx i = match ctx with
@@ -60,54 +60,74 @@ module FG =
   struct
     open Lexing
     type term =
-      Var of position * int
-    | IConst of position * int
-    | BConst of position * bool
-    | BinOp of position * op * term * term
-    | IfExp of position * term * term * term
-    | FunExp of position * id * ty * term
-    | AppExp of position * term * term
-    | TFunExp of position * id * term  (* the body must be a syntactic value and parameter is not needed *)
-    | TAppExp of position * term * ty
-    | AscExp of position * term * ty (* type ascription *)
-    | CastExp of position * term * ty * ty
+      Var of range * int
+    | IConst of range * int
+    | BConst of range * bool
+    | BinOp of range * op * term * term
+    | IfExp of range * term * term * term
+    | FunExp of range * id * ty * term
+    | AppExp of range * term * term
+    | TFunExp of range * id * term  (* the body must be a syntactic value and parameter is not needed *)
+    | TAppExp of range * term * ty
+    | AscExp of range * term * ty (* type ascription *)
+    | CastExp of range * term * ty * ty
 
     type program =
       Prog of term
     | Decl of id * ty * term
 
+    let tmRan = function
+        (Var(r, _) | IConst(r, _) | BConst(r, _) | BinOp(r, _, _, _)
+         | IfExp(r, _, _, _) | FunExp(r, _, _, _)
+         | AppExp(r, _, _) | TFunExp(r, _, _) | TAppExp(r, _, _)
+         | AscExp(r, _, _) | CastExp(r, _, _, _))
+        -> r
+
     let tmPos = function
-        (Var(p, _) | IConst(p, _) | BConst(p, _) | BinOp(p, _, _, _)
-         | IfExp(p, _, _, _) | FunExp(p, _, _, _)
-         | AppExp(p, _, _) | TFunExp(p, _, _) | TAppExp(p, _, _)
-         | AscExp(p, _, _) | CastExp(p, _, _, _))
-        -> p
+        (Var(r, _) | IConst(r, _) | BConst(r, _) | BinOp(r, _, _, _)
+         | IfExp(r, _, _, _) | FunExp(r, _, _, _)
+         | AppExp(r, _, _) | TFunExp(r, _, _) | TAppExp(r, _, _)
+         | AscExp(r, _, _) | CastExp(r, _, _, _))
+        -> r.frm
+
+    let join_range_exps e1 e2 =
+      join_range (tmRan e1) (tmRan e2)
 end
 
 module FC =
   struct
     open Lexing
     type term =
-      Var of position * int
-    | IConst of position * int
-    | BConst of position * bool
-    | BinOp of position * op * term * term
-    | IfExp of position * term * term * term
-    | FunExp of position * id * ty * term
-    | AppExp of position * term * term
-    | TSFunExp of position * id * term  (* the body must be a syntactic value and parameter is not needed *)
-    | TGFunExp of position * id * term
-    | TAppExp of position * term * ty
-    | CastExp of position * term * ty * ty
+      Var of range * int
+    | IConst of range * int
+    | BConst of range * bool
+    | BinOp of range * op * term * term
+    | IfExp of range * term * term * term
+    | FunExp of range * id * ty * term
+    | AppExp of range * term * term
+    | TSFunExp of range * id * term  (* the body must be a syntactic value and parameter is not needed *)
+    | TGFunExp of range * id * term
+    | TAppExp of range * term * ty
+    | CastExp of range * term * ty * ty
 
     type program =
       Prog of term
     | Decl of id * ty * term
 
+    let tmRan = function
+        (Var(r, _) | IConst(r, _) | BConst(r, _) | BinOp(r, _, _, _)
+         | IfExp(r, _, _, _) | FunExp(r, _, _, _)
+         | AppExp(r, _, _) | TSFunExp(r, _, _) | TGFunExp(r, _, _)
+         | TAppExp(r, _, _) | CastExp(r, _, _, _))
+        -> r
+
     let tmPos = function
-        (Var(p, _) | IConst(p, _) | BConst(p, _) | BinOp(p, _, _, _)
-         | IfExp(p, _, _, _) | FunExp(p, _, _, _)
-         | AppExp(p, _, _) | TSFunExp(p, _, _) | TGFunExp(p, _, _)
-         | TAppExp(p, _, _) | CastExp(p, _, _, _))
-        -> p
+        (Var(r, _) | IConst(r, _) | BConst(r, _) | BinOp(r, _, _, _)
+         | IfExp(r, _, _, _) | FunExp(r, _, _, _)
+         | AppExp(r, _, _) | TSFunExp(r, _, _) | TGFunExp(r, _, _)
+         | TAppExp(r, _, _) | CastExp(r, _, _, _))
+        -> r.frm
+
+    let join_range_exps e1 e2 =
+      join_range (tmRan e1) (tmRan e2)
   end
