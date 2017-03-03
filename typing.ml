@@ -139,7 +139,7 @@ module FC =
        | (_, GTVar) -> true
        | (_, PossiblySTVar f) -> f := false; true
        | (id, _) -> err ("isGradual: cannot happen -- " ^ id)
-                             
+
      let rec con ctx ty1 ty2 =
        ty1 = ty2 ||
          match ty1, ty2 with

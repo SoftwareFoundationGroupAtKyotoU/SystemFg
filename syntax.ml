@@ -15,7 +15,7 @@ type binding =
 | STVar
 | GTVar
 | PossiblySTVar of bool ref
-  
+
 type tyenv = (id * binding) list
 
 let rec name2index ctx id = match ctx with
@@ -53,7 +53,7 @@ let rec pp_ty ctx = function
   | TyVar i -> fst (List.nth ctx i)
   | Forall(id, ty0) -> "(All "^id^". "^pp_ty ((id,STVar)::ctx) ty0^")"
   | Dyn -> "*"
-          
+
 type op = Plus | Mult | Lt
 
 module FG =
@@ -103,7 +103,7 @@ module FC =
     type program =
       Prog of term
     | Decl of id * ty * term
-                          
+
     let tmPos = function
         (Var(p, _) | IConst(p, _) | BConst(p, _) | BinOp(p, _, _, _)
          | IfExp(p, _, _, _) | FunExp(p, _, _, _)

@@ -1,6 +1,6 @@
 open Eval
 open Typing
-       
+
 let rec read_eval_print lexeme env tyenv =
   print_string "# ";
   flush stdout;
@@ -21,9 +21,9 @@ let rec read_eval_print lexeme env tyenv =
          Lexing.flush_input lexeme;
          env, tyenv
        | Failure _ -> env, tyenv
-  in 
+  in
   read_eval_print lexeme newenv newtyenv
-                    
+
 let initial_env = Empty
 let initial_tenv = []
 

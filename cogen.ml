@@ -11,7 +11,7 @@ let lift_pos p =
 let errMsg_of_polarity = function
     Pos -> .< fun v -> Printf.sprintf "Blame to the expression side %s" (string_of_val v) >.
   | Neg -> .< fun v -> Printf.sprintf "Blame to the enviroment side %s" (string_of_val v) >.
-    
+
 let rec eval = function
     Var(p, idx) -> let p = lift_pos p in fun env -> .< lookup .~p idx .~env >.
   | IConst(_, i) -> fun env -> .< IntV i >.

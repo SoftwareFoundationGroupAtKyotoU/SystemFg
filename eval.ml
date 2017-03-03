@@ -36,7 +36,7 @@ let neg = function Pos -> Neg | Neg -> Pos
 let errMsg_of_polarity plr v = match plr with
     Pos -> Printf.sprintf "Blame to the expression side %s" (string_of_val v)
   | Neg -> Printf.sprintf "Blame to the enviroment side %s" (string_of_val v)
-                        
+
 let rec lookup pos idx = function
     Empty -> errAt pos ("Can't happen (unbound var : " ^ string_of_int idx ^")")
   | VB (v, env) -> if idx = 0 then v else lookup pos (idx-1) env
