@@ -11,7 +11,7 @@ let rec read_eval_print lexeme env tyenv =
       assert(ty = FC.typingDecl tyenv decl);
       let (id, v, newenv, newtyenv) = eval_decl env tyenv decl in
       print_string (id ^ " : ");
-      print_string (Syntax.pp_ty tyenv ty);
+      print_string (Syntax.string_of_ty tyenv ty);
       print_string " = ";
       pp_val v;
       print_newline();

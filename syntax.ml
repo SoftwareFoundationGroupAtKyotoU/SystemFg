@@ -45,13 +45,13 @@ let rec typeSubst i ty = function
 let typeInst ty ty' = (* ty must be a body of Forall *)
   typeShift (-1) 0 (typeSubst 0 (typeShift 1 0 ty') ty)
 
-let rec pp_ty ctx = function
+let rec string_of_ty ctx = function
     Int -> "Int"
   | Bool -> "Bool"
-  | Arr(ty1, ty2) -> "(" ^ pp_ty ctx ty1 ^ "->" ^ pp_ty ctx ty2 ^ ")"
+  | Arr(ty1, ty2) -> "(" ^ string_of_ty ctx ty1 ^ "->" ^ string_of_ty ctx ty2 ^ ")"
   (*     "Arr("^pp_ty ctx ty1^","^pp_ty ctx ty2^")" *)
   | TyVar i -> fst (List.nth ctx i)
-  | Forall(id, ty0) -> "(All "^id^". "^pp_ty ((id,STVar)::ctx) ty0^")"
+  | Forall(id, ty0) -> "(All "^id^". "^string_of_ty ((id,STVar)::ctx) ty0^")"
   | Dyn -> "*"
 
 type op = Plus | Mult | Lt
