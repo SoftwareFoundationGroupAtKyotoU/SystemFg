@@ -60,10 +60,31 @@ let rec con ctx ty1 ty2 =
     | _, Dyn -> forall (isGradual ctx) (freeTVs ty1)
     | _ -> false
 
+let rec join ctx ty1 ty2 =
+  match ty1, ty2 with
+    Dyn, _ -> if forall (isGradual ctx) (freeTVs ty2) then Some Dyn else None
+  | _, Dyn -> if forall (isGradual ctx) (freeTVs ty1) then Some Dyn else None
+  | Int, Int -> Some Int
+  | Bool, Bool -> Some Bool
+  | Arr(tys1, tyt1), Arr(tys2, tyt2) ->
+     (match join ctx tys1 tys2, join ctx tyt1 tyt2 with
+        Some tys, Some tyt -> Some (Arr(tys, tyt))
+      | _ -> None)
+  | Forall(id, ty1'), Forall(_, ty2') ->
+     (match join ((id,STVar)::ctx) ty1' ty2' with
+        Some ty -> Some ty
+      | None -> join ctx (typeInst ty1' Dyn) (typeInst ty2' Dyn)) (* Correct? *)
+  | Forall(id, ty1'), _ when containsDyn ty2 ->
+     join ((id,GTVar)::ctx) ty1' (typeShift 1 0 ty2)
+  | _, Forall(id, ty2') when containsDyn ty1 ->
+     join ((id,GTVar)::ctx) (typeShift 1 0 ty1) ty2'
+  | _ -> if forall (isGradual ctx) (freeTVs ty1)
+            && forall (isGradual ctx) (freeTVs ty2)
+         then Some Dyn else None
+  
 let typeOfBin = function
     (Plus | Mult) -> Int, Int, Int
   | Lt -> Int, Int, Bool
-
 
 module FC =
   struct
@@ -192,8 +213,12 @@ module FC =
           (match t1 with
              Bool -> let (f2, ty2) = translate ctx e2 in
                      let (f3, ty3) = translate ctx e3 in
-                     if ty2 = ty3 then FC.IfExp(r, f1, f2, f3), ty2
-                     else errAt r.frm "if: types of branches do not match"
+                     (match join ctx ty2 ty3 with
+                        Some ty -> FC.IfExp(r, f1,
+                                            putOpCast ctx ty2 ty f2,
+                                            putOpCast ctx ty3 ty f3),
+                                   ty
+                      | None -> errAt r.frm "if: types of branches do not match (there is no join)")
            | _ -> errAt (tmPos e1) "if: type of test not of Bool")
        | FunExp(r, id, ty, e0) ->
           let f0, tybody = translate ((id, VDecl ty)::ctx) e0 in
