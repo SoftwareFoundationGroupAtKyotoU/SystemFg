@@ -4,15 +4,15 @@ open Syntax
 open FG
 %}
 
-%token <Lexing.position> LPAREN RPAREN LBRACKET RBRACKET SEMISEMI
-%token <Lexing.position> RARROW DARROW COLON DOT
-%token <Lexing.position> PLUS AST LT EQ
-%token <Lexing.position> IF THEN ELSE TRUE FALSE LET IN FUN REC INT BOOL ALL
+%token <Support.Error.range> LPAREN RPAREN LBRACKET RBRACKET SEMISEMI
+%token <Support.Error.range> RARROW DARROW COLON DOT
+%token <Support.Error.range> PLUS AST LT EQ
+%token <Support.Error.range> IF THEN ELSE TRUE FALSE LET IN FUN REC INT BOOL ALL
 
-%token <int Support.Error.with_pos> INTV
-%token <Syntax.id Support.Error.with_pos> LCID
-%token <Syntax.id Support.Error.with_pos> PRIMEUCID
-%token <Syntax.id Support.Error.with_pos> UCID
+%token <int Support.Error.with_ran> INTV
+%token <Syntax.id Support.Error.with_ran> LCID
+%token <Syntax.id Support.Error.with_ran> PRIMEUCID
+%token <Syntax.id Support.Error.with_ran> UCID
 
 %start toplevel
 %type <Syntax.tyenv -> Syntax.FG.program> toplevel
@@ -38,7 +38,7 @@ lTExpr :
     e1=pExpr LT e2=pExpr { fun ctx ->
       let e1 = e1 ctx in
       let e2 = e2 ctx in
-      BinOp (tmPos e1, Lt, e1, e2)
+      BinOp (join_range_exps e1 e2, Lt, e1, e2)
     }
   | e=pExpr { e }
 
@@ -46,45 +46,49 @@ pExpr :
     e1=pExpr PLUS e2=mExpr { fun ctx ->
       let e1 = e1 ctx in
       let e2 = e2 ctx in
-      BinOp (tmPos e1, Plus, e1, e2) }
+      BinOp (join_range_exps e1 e2, Plus, e1, e2) }
   | e=mExpr { e }
 
 mExpr :
     e1=mExpr AST e2=appExpr { fun ctx ->
       let e1 = e1 ctx in
       let e2 = e2 ctx in
-      BinOp (tmPos e1, Mult, e1, e2) }
+      BinOp (join_range_exps e1 e2, Mult, e1, e2) }
   | e=appExpr { e }
 
 appExpr :
     e1=appExpr e2=aExpr { fun ctx ->
       let e1 = e1 ctx in
       let e2 = e2 ctx in
-      AppExp (tmPos e1, e1, e2) }
-  | e1=appExpr LBRACKET ty=ty RBRACKET { fun ctx ->
+      AppExp (join_range_exps e1 e2, e1, e2) }
+  | e1=appExpr LBRACKET ty=ty last=RBRACKET { fun ctx ->
       let e1 = e1 ctx in
-      TAppExp (tmPos e1, e1, ty ctx) }
+      TAppExp (join_range (tmRan e1) last, e1, ty ctx) }
   | e=aExpr { e }
 
 aExpr :
-    i=INTV { fun ctx -> IConst(i.p, i.v) }
-  | pos=TRUE { fun ctx -> BConst(pos, true) }
-  | pos=FALSE { fun ctx -> BConst(pos, false) }
-  | id=LCID { fun ctx -> Var (id.p, name2index ctx id) }
+    i=INTV { fun ctx -> IConst(i.r, i.v) }
+  | ran=TRUE { fun ctx -> BConst(ran, true) }
+  | ran=FALSE { fun ctx -> BConst(ran, false) }
+  | id=LCID { fun ctx -> Var (id.r, name2index ctx id) }
   | LPAREN e=expr RPAREN { e }
-  | pos=LPAREN e=expr COLON tgt=ty RPAREN
-      { fun ctx -> AscExp(pos, e ctx, tgt ctx) }
-  | pos=LPAREN e=expr COLON src=ty DARROW tgt=ty RPAREN
-      { fun ctx -> CastExp(pos, e ctx, src ctx, tgt ctx) }
+  | start=LPAREN e=expr COLON tgt=ty last=RPAREN
+      { fun ctx -> AscExp(join_range start last, e ctx, tgt ctx) }
+  | start=LPAREN e=expr COLON src=ty DARROW tgt=ty last=RPAREN
+      { fun ctx -> CastExp(join_range start last, e ctx, src ctx, tgt ctx) }
 
 ifExpr :
-    pos=IF e1=expr THEN e2=expr ELSE e3=expr
-      { fun ctx -> IfExp (pos, e1 ctx, e2 ctx, e3 ctx) }
+    start=IF e1=expr THEN e2=expr ELSE e3=expr { fun ctx ->
+      let e3 = e3 ctx in
+      IfExp (join_range start (tmRan e3), e1 ctx, e2 ctx, e3)
+    }
 
 letExpr :
-    pos=LET id=LCID plist=letParamList COLON ty=ty EQ e=expr IN body=expr { fun ctx ->
+    start=LET id=LCID plist=letParamList COLON ty=ty EQ e=expr IN body=expr { fun ctx ->
       let (t, ty) = plist ctx e ty in
-      AppExp(pos, FunExp(Lexing.dummy_pos, id.v, ty, body ((id.v,VDecl ty)::ctx)), t)
+      let body = body ((id.v,VDecl ty)::ctx) in
+      AppExp(join_range start (tmRan body),
+             FunExp(Support.Error.dummy_range, id.v, ty, body), t)
     }
 
 funExpr :
@@ -96,27 +100,35 @@ LetRecExpr :
 */
 
 funParamList :
-    pos=LPAREN id=LCID COLON ty=ty RPAREN { fun ctx t ->
+    start=LPAREN id=LCID COLON ty=ty RPAREN { fun ctx t ->
       let ty = ty ctx in
-      FunExp(pos, id.v, ty, t ((id.v,VDecl ty)::ctx)) }
+      let body = t ((id.v,VDecl ty)::ctx) in
+      FunExp(join_range start (tmRan body), id.v, ty, body)
+    }
   | id=UCID { fun ctx t ->
-      TFunExp(id.p, id.v, t ((id.v,PossiblySTVar (ref true))::ctx)) }
-  | pos=LPAREN id=LCID COLON ty=ty RPAREN rest=funParamList { fun ctx t ->
+      let body = t ((id.v,PossiblySTVar (ref true))::ctx) in
+      TFunExp(join_range id.r (tmRan body), id.v, body)
+    }
+  | start=LPAREN id=LCID COLON ty=ty RPAREN rest=funParamList { fun ctx t ->
       let ty = ty ctx in
-      FunExp(id.p, id.v, ty, rest ((id.v,VDecl ty)::ctx) t) }
+      let body = rest ((id.v,VDecl ty)::ctx) t in
+      FunExp(join_range start (tmRan body), id.v, ty, body)
+    }
   | id=UCID rest=funParamList { fun ctx t ->
-      TFunExp(id.p, id.v, rest ((id.v,PossiblySTVar (ref true))::ctx) t) }
+      let body = rest ((id.v,PossiblySTVar (ref true))::ctx) t in
+      TFunExp(join_range id.r (tmRan body), id.v, body)
+    }
 
 letParamList :
     /* empty */ { fun ctx t ty -> (t ctx, ty ctx) }
-  | pos=LPAREN id=LCID COLON ty=ty RPAREN rest=letParamList { fun ctx t ty ->
+  | start=LPAREN id=LCID COLON ty=ty RPAREN rest=letParamList { fun ctx t ty ->
        let ty' = ty ctx in
        let (t', ty'') = rest ((id.v, VDecl ty')::ctx) t ty in
-       FunExp(pos, id.v, ty', t'), Arr(ty', typeShift (-1) 0 ty'')
+       FunExp(join_range start (tmRan t'), id.v, ty', t'), Arr(ty', typeShift (-1) 0 ty'')
     }
   | id=UCID rest=letParamList { fun ctx t ty ->
        let (t', ty') = rest ((id.v,PossiblySTVar (ref true))::ctx) t ty in
-       TFunExp(id.p, id.v, t'), Forall(id.v, ty')
+       TFunExp(join_range id.r (tmRan t'), id.v, t'), Forall(id.v, ty')
     }
 
 ty :

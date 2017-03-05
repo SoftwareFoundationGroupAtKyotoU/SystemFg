@@ -15,17 +15,6 @@ and env =
 | VB of value * env
 | TB of unit ref * env
 
-let rec pp_val = function
-    IntV i -> print_int i
-  | BoolV true -> print_string "true"
-  | BoolV false -> print_string "false"
-  | Fun _ -> print_string "<fun>"
-  | TFun _ -> print_string "<tfun>"
-  | Tagged(I, v) -> pp_val v; print_string " : Int => *"
-  | Tagged(B, v) -> pp_val v; print_string " : Bool => *"
-  | Tagged(Ar, v) -> pp_val v; print_string " : *->* => *"
-  | Tagged(TV _, v) -> pp_val v; print_string " : X => *"
-
 let rec string_of_val = function
     IntV i -> string_of_int i
   | BoolV true -> "true"
@@ -38,14 +27,16 @@ let rec string_of_val = function
   | Tagged(TV _, v) -> Printf.sprintf "%s : X => *" (string_of_val v)
     (* TODO: recover the tyvar name *)
 
+let rec pp_val v = print_string (string_of_val v)
+
 type polarity = Pos | Neg
 
 let neg = function Pos -> Neg | Neg -> Pos
 
-let errMsg_of_polarity plr v = match plr with
-    Pos -> Printf.sprintf "Blame to the expression side %s" (string_of_val v)
-  | Neg -> Printf.sprintf "Blame to the enviroment side %s" (string_of_val v)
-                        
+let errMsg_of_polarity plr v tgt = match plr with
+    Pos -> Printf.sprintf "Blame to the expression side: %s => %s" (string_of_val v) tgt
+  | Neg -> Printf.sprintf "Blame to the enviroment side: %s => %s" (string_of_val v) tgt
+
 let rec lookup pos idx = function
     Empty -> errAt pos ("Can't happen (unbound var : " ^ string_of_int idx ^")")
   | VB (v, env) -> if idx = 0 then v else lookup pos (idx-1) env
@@ -67,10 +58,10 @@ let rec lookupty pos idx = function
  and env -> value -> value, respectively.  *)
 
 let rec eval = function
-    Var(p, idx) -> fun env -> lookup p idx env
+    Var(r, idx) -> fun env -> lookup r.frm idx env
   | IConst(_,i) -> fun env -> IntV i
   | BConst(_,b) -> fun env -> BoolV b
-  | BinOp(p, op, e1, e2) ->
+  | BinOp(r, op, e1, e2) ->
      let v1 = eval e1 in
      let v2 = eval e2 in
      fun env ->
@@ -78,8 +69,8 @@ let rec eval = function
         Plus, IntV i1, IntV i2 -> IntV (i1 + i2)
       | Mult, IntV i1, IntV i2 -> IntV (i1 * i2)
       | Lt, IntV i1, IntV i2 -> BoolV (i1 < i2)
-      | _ -> errAt p "Can't happen (non-integer argument to binop)")
-  | IfExp(p, e1, e2, e3) ->
+      | _ -> errBtw r "Can't happen (non-integer argument to binop)")
+  | IfExp(r, e1, e2, e3) ->
      let test = eval e1 in
      let thenclause = eval e2 in
      let elseclause = eval e3 in
@@ -87,94 +78,94 @@ let rec eval = function
      (match test env with
         BoolV true -> thenclause env
       | BoolV false -> elseclause env
-      | _ -> errAt p "Can't happen (nonbool condition)")
+      | _ -> errAt r.frm "Can't happen (nonbool condition)")
   | FunExp (_, id, _, e) ->
      let body = eval e in
      fun env -> Fun (fun v -> body (VB (v, env)))
-  | AppExp (p, e1, e2) ->
+  | AppExp (r, e1, e2) ->
      let proc = eval e1 in
      let arg = eval e2 in
      fun env ->
      (match proc env with
         Fun f -> f (arg env)
-      | _ -> errAt p "Can't happen (application of nonprocedure value)")
+      | _ -> errAt r.frm "Can't happen (application of nonprocedure value)")
   | TSFunExp (_, id, e) ->
      let body = eval e in  (**** shift -1 ****)
      fun env -> TFun (fun () -> body env)
   | TGFunExp (_, id, e) ->
      let body = eval e in
      fun env -> TFun (fun () -> let r = ref () in body (TB (r, env)))
-  | TAppExp (p, e, _) ->
+  | TAppExp (r, e, _) ->
      let tfun = eval e in
      fun env ->
      (match tfun env with
         TFun f -> f ()
-      | _ -> errAt p "Can't happen (application of non-tyabs")
-  | CastExp (p, e, ty1, ty2) ->
+      | _ -> errAt r.frm "Can't happen (application of non-tyabs")
+  | CastExp (r, e, ty1, ty2) ->
      let v = eval e in
-     let cast = (ty1 ==> ty2) p Pos in
+     let cast = (ty1 ==> ty2) r Pos in
      fun env -> cast env (v env)
-and (==>) t1 t2 p plr = match t1, t2 with  (* cast interpretation *)
+and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
     Int, Int -> fun env v -> v
   | Arr(Dyn,Dyn), Arr(Dyn,Dyn) -> fun env v -> v
   | TyVar id1, TyVar id2 ->
      if id1 = id2 then fun env v -> v
-     else errAt p ("Can't happen: incompatible types "^
-                     string_of_int id1^" and "^ string_of_int id2)
+     else errAt r.frm ("Can't happen: incompatible types "^
+                         string_of_int id1^" and "^ string_of_int id2)
   | Dyn, Dyn -> fun env v -> v
   | Int, Dyn -> fun env v -> Tagged (I, v)
   | Bool, Dyn -> fun env v -> Tagged (B, v)
   | Arr(Dyn,Dyn), Dyn -> fun env v -> Tagged (Ar, v)
-  | TyVar id, Dyn -> fun env v -> Tagged (TV (lookupty p id env), v)
+  | TyVar id, Dyn -> fun env v -> Tagged (TV (lookupty r.frm id env), v)
   | Dyn, Int ->
      fun env v -> (match v with
                      Tagged(I, v0) -> v0
-                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr v)
-                   | _ -> errAt p "Can't happen (Untagged value)")
+                   | Tagged(_, _) -> errBtw r (errMsg_of_polarity plr v "Int")
+                   | _ -> errAt r.frm "Can't happen (Untagged value)")
   | Dyn, Bool ->
      fun env v -> (match v with
                      Tagged(B, v0) -> v0
-                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr v)
-                   | _ -> errAt p "Can't happen (Untagged value)")
+                   | Tagged(_, _) -> errBtw r (errMsg_of_polarity plr v "Bool")
+                   | _ -> errAt r.frm "Can't happen (Untagged value)")
   | Dyn, Arr(Dyn,Dyn) ->
      fun env v -> (match v with
                    | Tagged(Ar, v0) -> v0
-                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr v)
-                   | _ -> errAt p "Can't happen (Untagged value)")
+                   | Tagged(_, _) -> errBtw r (errMsg_of_polarity plr v "*->*")
+                   | _ -> errAt r.frm "Can't happen (Untagged value)")
   | Dyn, TyVar id ->
      fun env v -> (match v with
-                   | Tagged(TV r, v0) ->
-                      if lookupty p id env == r then v0
-                      else errAt p (errMsg_of_polarity plr v)
-                   | Tagged(_, _) -> errAt p (errMsg_of_polarity plr v)
-                   | _ -> errAt p "Can't happen (Untagged value)")
+                   | Tagged(TV key, v0) ->
+                      if lookupty r.frm id env == key then v0
+                      else errBtw r (errMsg_of_polarity plr v "Y")
+                   | Tagged(_, _) -> errBtw r (errMsg_of_polarity plr v "Z")
+                   | _ -> errAt r.frm "Can't happen (Untagged value)")
   | Arr(s1,t1), Arr(s2,t2) ->
-     let argcast = (s2 ==> s1) p (neg plr) in
-     let rescast = (t1 ==> t2) p plr in
+     let argcast = (s2 ==> s1) r (neg plr) in
+     let rescast = (t1 ==> t2) r plr in
      (fun env -> function
         Fun f -> Fun (fun w -> let arg = argcast env w in
                                  rescast env (f arg))
-      | _ -> errAt p "Can't happen (Non-procedure value)")
+      | _ -> errAt r.frm "Can't happen (Non-procedure value)")
   | Forall(id1, t1), Forall(id2, t2) ->
-     let bodycast = (t1 ==> t2) p plr in
+     let bodycast = (t1 ==> t2) r plr in
      (fun env -> function
         TFun f -> TFun (fun () -> bodycast env (f ()))
-      | _ -> errAt p "Can't happen (Not polyfun)")
+      | _ -> errAt r.frm "Can't happen (Not polyfun)")
   | ty1, Forall(id2, ty2) ->
-     let bodycast = (ty1 ==> ty2) p plr in
+     let bodycast = (ty1 ==> ty2) r plr in
      fun env v -> TFun (fun () -> bodycast (TB(ref (), env)) v)
   | Forall(id1, ty1), ty2 ->
-     let bodycast = (typeInst ty1 Dyn ==> ty2) p plr in
+     let bodycast = (typeInst ty1 Dyn ==> ty2) r plr in
      (fun env -> function
         TFun f -> bodycast env (f ())
-      | _ -> errAt p "Can't happen (Not polyfun)")
+      | _ -> errAt r.frm "Can't happen (Not polyfun)")
   | Arr(s1,t1) as ty, Dyn ->
-     let cast = (ty ==> Arr(Dyn, Dyn)) p plr in
+     let cast = (ty ==> Arr(Dyn, Dyn)) r plr in
      fun env v -> Tagged (Ar, cast env v)
   | Dyn, (Arr(s, t) as ty) ->
-     let cast = (Arr(Dyn,Dyn) ==> ty) p plr in
+     let cast = (Arr(Dyn,Dyn) ==> ty) r plr in
      fun env v -> cast env (Tagged (Ar, v))
-  | _, _ -> errAt p "Can't happen!"
+  | _, _ -> errAt r.frm "Can't happen!"
 
 let eval_decl env tyenv = function
     Prog e -> let v = eval e env in

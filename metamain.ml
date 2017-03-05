@@ -1,7 +1,7 @@
 open Eval
 open Cogen
 open Typing
-       
+
 let rec read_eval_print lexeme env tyenv =
   print_string "# ";
   flush stdout;
@@ -20,9 +20,9 @@ let rec read_eval_print lexeme env tyenv =
     with Parsing.Parse_error -> print_string "Parse error\n"; env, tyenv
        | Failure s -> print_string s; print_newline(); env, tyenv
        | _ -> env, tyenv
-  in 
+  in
   read_eval_print lexeme newenv newtyenv
-                    
+
 let initial_env = Empty
 let initial_tenv = []
 
