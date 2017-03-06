@@ -13,8 +13,8 @@ let lift_ran {frm=p1; to_=p2} =
   .< {frm= .~(lift_pos p1); to_= .~(lift_pos p2)} >.
 
 let errMsg_of_polarity = function
-    Pos -> .< fun v -> Printf.sprintf "Blame to the expression side %s" (string_of_val v) >.
-  | Neg -> .< fun v -> Printf.sprintf "Blame to the enviroment side %s" (string_of_val v) >.
+    Pos -> .< fun v -> Printf.sprintf "Blame on the expression side %s" (string_of_val v) >.
+  | Neg -> .< fun v -> Printf.sprintf "Blame on the enviroment side %s" (string_of_val v) >.
 
 let rec eval = function
     Var(r, idx) -> let p = lift_pos r.frm in fun env -> .< lookup .~p idx .~env >.

@@ -34,8 +34,8 @@ type polarity = Pos | Neg
 let neg = function Pos -> Neg | Neg -> Pos
 
 let errMsg_of_polarity plr v tgt = match plr with
-    Pos -> Printf.sprintf "Blame to the expression side: %s => %s" (string_of_val v) tgt
-  | Neg -> Printf.sprintf "Blame to the enviroment side: %s => %s" (string_of_val v) tgt
+    Pos -> Printf.sprintf "Blame on the expression side: %s => %s" (string_of_val v) tgt
+  | Neg -> Printf.sprintf "Blame on the enviroment side: %s => %s" (string_of_val v) tgt
 
 let rec lookup pos idx = function
     Empty -> errAt pos ("Can't happen (unbound var : " ^ string_of_int idx ^")")
