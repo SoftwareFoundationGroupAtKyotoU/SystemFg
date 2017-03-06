@@ -121,10 +121,10 @@ funParamList :
 
 letParamList :
     /* empty */ { fun ctx t ty -> (t ctx, ty ctx) }
-  | start=LPAREN id=LCID COLON ty=ty RPAREN rest=letParamList { fun ctx t ty ->
-       let ty' = ty ctx in
-       let (t', ty'') = rest ((id.v, VDecl ty')::ctx) t ty in
-       FunExp(join_range start (tmRan t'), id.v, ty', t'), Arr(ty', typeShift (-1) 0 ty'')
+  | start=LPAREN id=LCID COLON paramty=ty RPAREN rest=letParamList { fun ctx t ty ->
+       let paramty = paramty ctx in
+       let (t, ty) = rest ((id.v, VDecl paramty)::ctx) t ty in
+       FunExp(join_range start (tmRan t), id.v, paramty, t), Arr(paramty, typeShift (-1) 0 ty)
     }
   | id=UCID rest=letParamList { fun ctx t ty ->
        let (t', ty') = rest ((id.v,PossiblySTVar (ref true))::ctx) t ty in
