@@ -51,11 +51,21 @@ let rec lookupty pos idx = function
 let pervasive =
   let open Syntax in
   [("isInt", VDecl (Arr(Dyn,Bool)),
-    Fun (fun v -> match v with Tagged(I,_) -> BoolV true | _ -> BoolV false));
+    Fun (fun v -> match v with
+                    Tagged(I,_) -> BoolV true
+                  | Tagged(TV _,_) -> err "Blame at isInt"
+                  | _ -> BoolV false));
    ("isBool", VDecl (Arr(Dyn,Bool)),
-    Fun (fun v -> match v with Tagged(B,_) -> BoolV true | _ -> BoolV false));
+    Fun (fun v -> match v with
+                    Tagged(B,_) -> BoolV true
+                  | Tagged(TV _,_) -> err "Blame at isBool"
+                  | _ -> BoolV false));
    ("isFun", VDecl (Arr(Dyn,Bool)),
-    Fun (fun v -> match v with Tagged(Ar,_) -> BoolV true | _ -> BoolV false))]
+    Fun (fun v -> match v with
+                    Tagged(Ar,_) -> BoolV true
+                  | Tagged(TV _,_) -> err "Blame at isFun"
+                  | _ -> BoolV false));
+  ]
    
 let initial_env = List.fold_right (fun (_, _, f) env -> VB(f, env)) pervasive Empty 
 let initial_tenv = List.map (fun (s, t, _) -> (s, t)) pervasive
