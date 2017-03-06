@@ -47,6 +47,19 @@ let rec lookupty pos idx = function
   | VB (_, env) -> lookupty pos (idx-1) env
   | TB (v, env) -> if idx = 0 then v else lookupty pos (idx-1) env
 
+(* Primitive tag-testing functions *)
+let pervasive =
+  let open Syntax in
+  [("isInt", VDecl (Arr(Dyn,Bool)),
+    Fun (fun v -> match v with Tagged(I,_) -> BoolV true | _ -> BoolV false));
+   ("isBool", VDecl (Arr(Dyn,Bool)),
+    Fun (fun v -> match v with Tagged(B,_) -> BoolV true | _ -> BoolV false));
+   ("isFun", VDecl (Arr(Dyn,Bool)),
+    Fun (fun v -> match v with Tagged(Ar,_) -> BoolV true | _ -> BoolV false))]
+   
+let initial_env = List.fold_right (fun (_, _, f) env -> VB(f, env)) pervasive Empty 
+let initial_tenv = List.map (fun (s, t, _) -> (s, t)) pervasive
+                            
 (* eval : term -> env -> value
    (==>) : ty -> ty -> env -> value -> value
 
