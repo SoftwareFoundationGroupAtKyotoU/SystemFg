@@ -1,5 +1,6 @@
 open Format
 open Syntax
+open Eval
 
 let pr = fprintf
 
@@ -37,3 +38,15 @@ and print_forall ctx ppf t =
   match t with
     Forall(id, t0) -> pr ppf " %s%a" id (print_forall ((id,STVar)::ctx)) t0
   | _ -> pr ppf ". %a" (print_type ctx) t
+
+let rec print_val ppf = function
+    IntV i -> pp_print_int ppf i
+  | BoolV true -> pp_print_string ppf "true"
+  | BoolV false -> pp_print_string ppf "false"
+  | Fun _ -> pp_print_string ppf "<fun>"
+  | TFun _ -> pp_print_string ppf "<tfun>"
+  | Tagged(I, v) -> pr ppf "%a : Int => *" print_val v
+  | Tagged(B, v) -> pr ppf "%a : Bool => *" print_val v
+  | Tagged(Ar, v) -> pr ppf "%a : *->* => *" print_val v
+  | Tagged(TV _, v) -> pr ppf "%a : X => *" print_val v
+    (* TODO: recover the tyvar name *)
