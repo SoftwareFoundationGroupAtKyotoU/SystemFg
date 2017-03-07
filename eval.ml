@@ -130,6 +130,7 @@ let rec eval = function
      fun env -> cast env (v env)
 and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
     Int, Int -> fun env v -> v
+  | Bool, Bool -> fun env v -> v
   | Arr(Dyn,Dyn), Arr(Dyn,Dyn) -> fun env v -> v
   | TyVar id1, TyVar id2 ->
      if id1 = id2 then fun env v -> v
