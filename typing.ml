@@ -82,6 +82,22 @@ let rec join ctx ty1 ty2 =
             && forall (isGradual ctx) (freeTVs ty2)
          then Some Dyn else None
 
+let rec meet ctx ty1 ty2 =
+  match ty1, ty2 with
+    Dyn, _ -> if forall (isGradual ctx) (freeTVs ty2) then Some ty2 else None
+  | _, Dyn -> if forall (isGradual ctx) (freeTVs ty1) then Some ty1 else None
+  | Int, Int -> Some Int
+  | Bool, Bool -> Some Bool
+  | Arr(tys1, tyt1), Arr(tys2, tyt2) ->
+     (match meet ctx tys1 tys2, meet ctx tyt1 tyt2 with
+        Some tys, Some tyt -> Some (Arr(tys, tyt))
+      | _ -> None)
+  | Forall(id, ty1'), Forall(_, ty2') -> meet ((id,STVar)::ctx) ty1' ty2'
+  (* not sure if the following two clauses are correct *)
+  | Forall(id, ty1'), _ -> meet ((id,GTVar)::ctx) (typeShift 1 0 ty1') ty2
+  | _, Forall(id, ty2') -> meet ((id,GTVar)::ctx) ty1 (typeShift 1 0 ty2')
+  | _, _ -> None
+                              
 let typeOfBin = function
     (Plus | Mult) -> Int, Int, Int
   | Lt -> Int, Int, Bool
@@ -213,12 +229,12 @@ module FC =
           (match t1 with
              Bool -> let (f2, ty2) = translate ctx e2 in
                      let (f3, ty3) = translate ctx e3 in
-                     (match join ctx ty2 ty3 with
+                     (match meet ctx ty2 ty3 with
                         Some ty -> FC.IfExp(r, f1,
                                             putOpCast ctx ty2 ty f2,
                                             putOpCast ctx ty3 ty f3),
                                    ty
-                      | None -> errAt r.frm "if: types of branches do not match (there is no join)")
+                      | None -> errAt r.frm "if: types of branches do not match (there is no meet)")
            | _ -> errAt (tmPos e1) "if: type of test not of Bool")
        | FunExp(r, id, ty, e0) ->
           let f0, tybody = translate ((id, VDecl ty)::ctx) e0 in
