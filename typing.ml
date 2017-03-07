@@ -81,7 +81,7 @@ let rec join ctx ty1 ty2 =
   | _ -> if forall (isGradual ctx) (freeTVs ty1)
             && forall (isGradual ctx) (freeTVs ty2)
          then Some Dyn else None
-  
+
 let typeOfBin = function
     (Plus | Mult) -> Int, Int, Int
   | Lt -> Int, Int, Bool
@@ -176,10 +176,10 @@ module FC =
          | _, Dyn -> forall (isGradualOrMakeItGradual ctx) (freeTVs ty1)
          | _ -> false
 
-     let matchingFun f1 = function
+     let matchingFun ctx f1 = function
          Dyn -> FC.CastExp(FC.tmRan f1, f1, Dyn, Arr(Dyn, Dyn)), Dyn, Dyn
        | Arr(dom,cod) -> f1, dom, cod
-       | _ -> errAt (FC.tmPos f1) ("Type does not match with -> or *")
+       | ty -> errAt (FC.tmPos f1) (Printf.sprintf "Type %s does not match with -> or *" (string_of_ty ctx ty))
 
      let matchingTFun f1 = function
          Dyn ->
@@ -225,7 +225,7 @@ module FC =
           FC.FunExp(r, id, ty, f0), Arr(ty, typeShift (-1) 0 tybody)
        | AppExp(r, e1, e2) ->
           let f1, ty1 = translate ctx e1 in
-          let f1, ty11, ty12 = matchingFun f1 ty1 in
+          let f1, ty11, ty12 = matchingFun ctx f1 ty1 in
           let f2, ty2 = translate ctx e2 in
           if ty11 = ty2 then FC.AppExp(r, f1, f2), ty12
           else if con ctx ty11 ty2 then
