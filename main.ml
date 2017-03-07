@@ -18,20 +18,12 @@ let rec read_eval_print lexeme env tyenv =
       pr std_formatter "%s : %a = %a\n" id (Pp.print_type tyenv) ty Pp.print_val v;
       newenv, newtyenv
     with
+      (* Soft errors *)
       Gtfparser.Error ->
        pr std_formatter "Parse error\n";
        Lexing.flush_input lexeme;
        env, tyenv
     | Syntax.UnboundVar (p, s) -> warningAt p s; env, tyenv
-    | ImplBug (p, s) ->
-       pr std_formatter "\n%a\nImplementation bug (%s)" print_pos p s;
-       exit 0
-    | ImplBugV (p, s, v) ->
-       pr std_formatter "\n%a\nImplementation bug (%s): %a" print_pos p s Pp.print_val v;
-       exit 0
-    | ImplBugRanV (r, s, v) ->
-       pr std_formatter "\n%a\nImplementation bug (%s): %a" print_ran r s Pp.print_val v;
-       exit 0
     | Typing.TypeError (p, s, tyenv, ty) ->
        pr std_formatter ("\n%a\n" ^^ s) print_pos p (Pp.print_type tyenv) ty;
        env, tyenv
@@ -43,8 +35,16 @@ let rec read_eval_print lexeme env tyenv =
           Pos -> pr std_formatter "\n%a\nBlame on the expression side: %a => %s\n" print_ran r Pp.print_val v s
         | Neg -> pr std_formatter "\n%a\nBlame on the environment side: %a => %s\n" print_ran r Pp.print_val v s);
        env, tyenv
-    | Failure s ->
-       warning (Format.sprintf "Uncaught failure %s\n" s); env, tyenv
+    (* Fatal errors *)
+    | ImplBug (p, s) ->
+       pr std_formatter "\n%a\nImplementation bug (%s)" print_pos p s;
+       exit 0
+    | ImplBugV (p, s, v) ->
+       pr std_formatter "\n%a\nImplementation bug (%s): %a" print_pos p s Pp.print_val v;
+       exit 0
+    | ImplBugRanV (r, s, v) ->
+       pr std_formatter "\n%a\nImplementation bug (%s): %a" print_ran r s Pp.print_val v;
+       exit 0
   in
   read_eval_print lexeme newenv newtyenv
 
