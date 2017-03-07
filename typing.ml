@@ -102,14 +102,25 @@ let typeOfBin = function
     (Plus | Mult) -> Int, Int, Int
   | Lt -> Int, Int, Bool
 
+type tyenv = (id * binding) list
+exception TypeError of
+            Lexing.position
+            * ((Format.formatter -> ty -> unit) -> ty -> unit, Format.formatter, unit) Pervasives.format
+            * tyenv * ty
+exception TypeError2 of
+            Lexing.position
+            * ((Format.formatter -> ty -> unit) -> ty -> (Format.formatter -> ty -> unit) -> ty -> unit, Format.formatter, unit) Pervasives.format
+            * tyenv * ty * ty
+
 module FC =
   struct
     open Syntax.FC
+
     let rec typeOf ctx = function
         Var(r,i) ->
         (match List.nth ctx i with
            (_, VDecl ty) -> typeShift (i+1) 0 ty
-         | (id, _) -> errAt r.frm ("var: "^id^"is not a term variable!?"))
+         | (id, _) -> errAt r.frm (Format.sprintf "var: %s is not a term variable!?" id))
       | IConst(_,_) -> Int
       | BConst(_,_) -> Bool
       | BinOp(r, op, e1, e2) ->
@@ -117,14 +128,15 @@ module FC =
           let ty1', ty2', ty3 = typeOfBin op in
           if ty1 = ty1' then
             if ty2 = ty2' then ty3
-            else errAt (tmPos e2) ("binop: second arg not as expected")
-          else errAt (tmPos e1) ("binop: first arg not as expected")
+            else raise (TypeError2 (tmPos e2, "binop: the second arg has type %a but is expected to have type %a", ctx, ty2, ty2'))
+          else raise (TypeError2 (tmPos e1, "binop: the first arg has type %a but is expected to have type %a", ctx, ty1, ty1'))
       | IfExp(r, e1, e2, e3) ->
          (match typeOf ctx e1 with
             Bool -> let ty2 = typeOf ctx e2 in
-                    if ty2 = typeOf ctx e3 then ty2
-                    else errAt r.frm "if: types of branches do not match"
-          | _ -> errAt (tmPos e1) "if: type of test not of Bool")
+                    let ty3 = typeOf ctx e3 in
+                    if ty2 = ty3 then ty2
+                    else raise (TypeError2 (r.frm, "if: types of branches %a and %a do not match", ctx, ty2, ty3))
+          | ty1 -> raise (TypeError (tmPos e1, "if: the test exp has type %a but is expected to have type Bool", ctx, ty1)))
       | FunExp(r, id, ty, e0) ->
          let tybody = typeOf ((id, VDecl ty)::ctx) e0 in
          Arr(ty, typeShift (-1) 0 tybody)
@@ -134,8 +146,8 @@ module FC =
          (match ty1 with
           | Arr(ty11, ty12) when con ctx ty11 ty2 -> ty12
           | Arr(ty11, _) ->
-             errAt r.frm "app: the type of arg isn't consistent with the expected argument type"
-          | _ -> errAt (tmPos e1) "app: the type of the expression isn't -> or *")
+             raise (TypeError2 (r.frm, "app: the argument has type %a but is expected to be consistent with %a", ctx, ty2, ty11))
+          | _ -> raise (TypeError (tmPos e1, "app: the expression has type %a but is expected to have -> or *", ctx, ty1)))
       | TSFunExp(r, id, e0) ->
          Forall(id, typeOf ((id,STVar)::ctx) e0)
       | TGFunExp(r, id, e0) ->
@@ -144,20 +156,20 @@ module FC =
          let ty1 = typeOf ctx e1 in
          (match ty1 with
           | Forall(id, ty11) -> typeInst ty11 ty
-          | _ -> errAt (tmPos e1) "tyapp: not a polymorphic function")
+          | _ -> raise (TypeError (tmPos e1, "app: the expression has type %a but is expected to have All or *", ctx, ty1)))
       | CastExp(r, e0, ty1, ty2) ->
          let ty0 = typeOf ctx e0 in
          if ty0 = ty1 then
            if con ctx ty1 ty2 then ty2
-           else errAt r.frm "cast: the source and target types are not consistent"
-         else errAt (tmPos e0) "cast: the type of exp is not the given source type"
+           else raise (TypeError2 (r.frm, "cast: the source type %a and target type %a are not consistent", ctx, ty1, ty2))
+         else raise (TypeError2 (tmPos e0, "cast: the expression has type %a but is expected to have %a", ctx, ty0, ty1))
 
     let typingDecl ctx = function
         Prog e -> typeOf ctx e
       | Decl(_, ty, e) ->
          let tye = typeOf ctx e in
          if ty = tye then ty
-         else errAt (tmPos e) "let: the type of exp isn't as declared"
+         else raise (TypeError2 (tmPos e, "let: the expression has type %a but is expected to have %a", ctx, tye, ty))
   end
 
  module FG =
@@ -195,14 +207,14 @@ module FC =
      let matchingFun ctx f1 = function
          Dyn -> FC.CastExp(FC.tmRan f1, f1, Dyn, Arr(Dyn, Dyn)), Dyn, Dyn
        | Arr(dom,cod) -> f1, dom, cod
-       | ty -> errAt (FC.tmPos f1) (Printf.sprintf "Type %s does not match with -> or *" (string_of_ty ctx ty))
+       | ty -> raise (TypeError (FC.tmPos f1, "The expression has type %a but is expected to have -> or *", ctx, ty))
 
-     let matchingTFun f1 = function
+     let matchingTFun ctx f1 = function
          Dyn ->
           let ty = Forall("dummy", Dyn) in
           FC.CastExp(FC.tmRan f1, f1, Dyn, ty), Dyn
        | Forall(_,ty11) -> f1, ty11
-       | _ -> errAt (FC.tmPos f1) ("Type does not match with forall or *")
+       | ty -> raise (TypeError (FC.tmPos f1, "The expression has type %a but is expected to have All or *", ctx, ty))
 
      let putOpCast ctx src tgt f =
        if src = tgt then f
@@ -212,7 +224,7 @@ module FC =
          Var(r,i) ->
          (match List.nth ctx i with
             (_, VDecl ty) -> FC.Var(r, i), typeShift (i+1) 0 ty
-          | (id, _) -> errAt r.frm ("var: "^id^"is not a term variable!?"))
+          | (id, _) -> errAt r.frm (Format.sprintf "var: %s is not a term variable!?" id))
        | IConst(r,i) -> FC.IConst(r,i), Int
        | BConst(r,b) -> FC.BConst(r,b), Bool
        | BinOp(r, op, e1, e2) ->
@@ -222,20 +234,21 @@ module FC =
             if con ctx ty2 ty2' then
               FC.BinOp(r, op, putOpCast ctx ty1 ty1' f1, putOpCast ctx ty2 ty2' f2),
               ty3
-            else errAt (tmPos e2) ("binop: second arg not as expected")
-          else errAt (tmPos e1) ("binop: first arg not as expected")
+            else raise (TypeError2 (tmPos e2, "binop: the second arg has type %a but is expected to have type %a", ctx, ty2, ty2'))
+          else raise (TypeError2 (tmPos e1, "binop: the first arg has type %a but is expected to have type %a", ctx, ty1, ty1'))
        | IfExp(r, e1, e2, e3) ->
-          let f1, t1 = translate ctx e1 in
-          (match t1 with
-             Bool -> let (f2, ty2) = translate ctx e2 in
+          let f1, ty1 = translate ctx e1 in
+          (match ty1 with
+             Bool | Dyn ->
+                     let (f2, ty2) = translate ctx e2 in
                      let (f3, ty3) = translate ctx e3 in
                      (match meet ctx ty2 ty3 with
-                        Some ty -> FC.IfExp(r, f1,
+                        Some ty -> FC.IfExp(r, putOpCast ctx ty1 Bool f1,
                                             putOpCast ctx ty2 ty f2,
                                             putOpCast ctx ty3 ty f3),
                                    ty
-                      | None -> errAt r.frm "if: types of branches do not match (there is no meet)")
-           | _ -> errAt (tmPos e1) "if: type of test not of Bool")
+                      | None -> raise (TypeError2 (r.frm, "if: types of branches %a and %a do not match (no meet)", ctx, ty2, ty3)))
+           | ty1 -> raise (TypeError (tmPos e1, "if: the test exp has type %a but is expected to have type Bool or *", ctx, ty1)))
        | FunExp(r, id, ty, e0) ->
           let f0, tybody = translate ((id, VDecl ty)::ctx) e0 in
           FC.FunExp(r, id, ty, f0), Arr(ty, typeShift (-1) 0 tybody)
@@ -246,7 +259,7 @@ module FC =
           if ty11 = ty2 then FC.AppExp(r, f1, f2), ty12
           else if con ctx ty11 ty2 then
             FC.AppExp(r, f1, FC.CastExp(FC.tmRan f2, f2, ty2, ty11)), ty12
-          else errAt r.frm "app: the type of arg isn't consistent with the expected argument type"
+          else raise (TypeError2 (r.frm, "app: the argument has type %a but is expected to be consistent with %a", ctx, ty2, ty11))
        | TFunExp(r, id, e0) ->
           let flag = ref true in
           let f0, ty0 = translate ((id,PossiblySTVar flag)::ctx) e0 in
@@ -254,18 +267,18 @@ module FC =
           Forall(id, ty0)
        | TAppExp(r, e1, ty) ->
           let f1, ty1 = translate ctx e1 in
-          let f1', ty1' = matchingTFun f1 ty1 in
+          let f1', ty1' = matchingTFun ctx f1 ty1 in
           FC.TAppExp(r, f1', ty), typeInst ty1' ty
        | AscExp(r, e1, ty) ->
           let f1, ty1 = translate ctx e1 in
           if con ctx ty1 ty then FC.CastExp(r, f1, ty1, ty), ty
-          else errAt r.frm "Ascription: not compatible"
-       | CastExp(r, e1, ty1, ty2) ->
-          let f1, ty1' = translate ctx e1 in
+          else raise (TypeError2 (r.frm, "Ascription: the expression has type %a but is not consistent with %a", ctx, ty1, ty))
+       | CastExp(r, e0, ty1, ty2) ->
+          let f1, ty1' = translate ctx e0 in
           if ty1 = ty1' then
             if con ctx ty1 ty2 then FC.CastExp(r, f1, ty1, ty2), ty2
-            else errAt r.frm "Cast: src and target not compatible"
-          else errAt (tmPos e1) "Cast: doesn't match the src type"
+            else raise (TypeError2 (r.frm, "cast: the source type %a and target type %a are not consistent", ctx, ty1, ty2))
+          else raise (TypeError2 (tmPos e0, "cast: the expression has type %a but is expected to have %a", ctx, ty1', ty1))
 
      let translateDecl ctx = function
          Prog e ->

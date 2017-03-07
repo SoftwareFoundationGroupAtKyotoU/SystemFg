@@ -154,6 +154,7 @@ COMMONFILES[] =
     gtflexer
     typing
     eval
+    pp
 
 FILES[] =
     $(COMMONFILES)

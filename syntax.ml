@@ -17,9 +17,10 @@ type binding =
 | PossiblySTVar of bool ref
 
 type tyenv = (id * binding) list
+exception UnboundVar of Lexing.position * string
 
 let rec name2index ctx id = match ctx with
-    [] -> errBtw id.r ("Unbound variable: " ^ id.v)
+    [] -> raise (UnboundVar(id.r.frm, "Unbound variable: " ^ id.v))
   | (id', _) :: ctx' -> if id.v = id' then 0 else (name2index ctx' id) + 1
 
 let rec index2name ctx i = match ctx with
