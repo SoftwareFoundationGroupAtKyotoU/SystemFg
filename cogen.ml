@@ -131,7 +131,7 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
                        TFun f -> TFun (fun () -> .~(bodycast env .< f () >.))
                      | _ -> errAt .~p "Can't happen (Not polyfun)" >.
   | ty1, Forall(id2, ty2) ->
-     let bodycast = (ty1 ==> ty2) r plr in
+     let bodycast = (typeShift 1 0 ty1 ==> ty2) r plr in
      fun env v -> .< TFun (fun () -> let r = ref () in .~(bodycast .< TB(r, .~env) >. v)) >.
   | Forall(id1, ty1), ty2 ->
      let bodycast = (typeInst ty1 Dyn ==> ty2) r plr in
