@@ -120,7 +120,11 @@ funParamList :
     }
 
 letParamList :
-    /* empty */ { fun ctx t ty -> (t ctx, ty ctx) }
+    /* empty */ { fun ctx t ty ->
+       let t, ty = t ctx, ty ctx in
+       (* the source location information is not quite correct *)
+       AscExp(tmRan t, t, ty), ty
+    }
   | start=LPAREN id=LCID COLON paramty=ty RPAREN rest=letParamList { fun ctx t ty ->
        let paramty = paramty ctx in
        let (t, ty) = rest ((id.v, VDecl paramty)::ctx) t ty in
