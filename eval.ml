@@ -31,7 +31,7 @@ let rec lookup idx = function
 
 let lookup pos idx env =
   try lookup idx env with
-    Not_found -> raise (ImplBug (pos, "Can't happen (unbound var : " ^ string_of_int idx ^")"))
+    Not_found -> raise (ImplBug (pos, "unbound var : " ^ string_of_int idx))
 
 let rec lookupty idx = function
     Empty -> raise Not_found
@@ -40,7 +40,7 @@ let rec lookupty idx = function
 
 let lookupty pos idx env =
   try lookupty idx env with
-    Not_found -> raise (ImplBug (pos, "Can't happen (unbound tyvar: " ^ string_of_int idx ^ ")"))
+    Not_found -> raise (ImplBug (pos, "unbound tyvar: " ^ string_of_int idx))
 
 (* Primitive tag-testing functions *)
 exception Untagged

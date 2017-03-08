@@ -26,9 +26,11 @@ let rec read_eval_print lexeme env tyenv =
     | Syntax.UnboundVar (p, s) -> warningAt p s; env, tyenv
     | Typing.TypeError (p, s, tyenv, ty) ->
        pr std_formatter ("\n%a\n" ^^ s) print_pos p (Pp.print_type tyenv) ty;
+       pr std_formatter "\n";
        env, tyenv
     | Typing.TypeError2 (p, s, tyenv, ty1, ty2) ->
        pr std_formatter ("\n%a\n" ^^ s) print_pos p (Pp.print_type tyenv) ty1 (Pp.print_type tyenv) ty2;
+       pr std_formatter "\n";
        env, tyenv
     | Blame (r, plr, (Tagged(_,_,rv) as v), s) ->
        (match plr with
@@ -39,13 +41,13 @@ let rec read_eval_print lexeme env tyenv =
        env, tyenv
     (* Fatal errors *)
     | ImplBug (p, s) ->
-       pr std_formatter "\n%a\nImplementation bug (%s)" print_pos p s;
+       pr std_formatter "\n%a\nImplementation bug (%s)\n" print_pos p s;
        exit 0
     | ImplBugV (p, s, v) ->
-       pr std_formatter "\n%a\nImplementation bug (%s): %a" print_pos p s Pp.print_val v;
+       pr std_formatter "\n%a\nImplementation bug (%s): %a\n" print_pos p s Pp.print_val v;
        exit 0
     | ImplBugRanV (r, s, v) ->
-       pr std_formatter "\n%a\nImplementation bug (%s): %a" print_ran r s Pp.print_val v;
+       pr std_formatter "\n%a\nImplementation bug (%s): %a\n" print_ran r s Pp.print_val v;
        exit 0
   in
   read_eval_print lexeme newenv newtyenv
