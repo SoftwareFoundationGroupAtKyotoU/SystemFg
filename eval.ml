@@ -15,20 +15,6 @@ and env =
 | VB of value * env
 | TB of unit ref * env
 
-let rec string_of_val = function
-    IntV i -> string_of_int i
-  | BoolV true -> "true"
-  | BoolV false -> "false"
-  | Fun _ -> "<fun>"
-  | TFun _ -> "<tfun>"
-  | Tagged(I, v) -> Printf.sprintf "%s : Int => *" (string_of_val v)
-  | Tagged(B, v) -> Printf.sprintf "%s : Bool => *" (string_of_val v)
-  | Tagged(Ar, v) -> Printf.sprintf "%s : *->* => *" (string_of_val v)
-  | Tagged(TV _, v) -> Printf.sprintf "%s : X => *" (string_of_val v)
-    (* TODO: recover the tyvar name *)
-
-let rec pp_val v = print_string (string_of_val v)
-
 type polarity = Pos | Neg
 
 let neg = function Pos -> Neg | Neg -> Pos
@@ -37,10 +23,6 @@ exception ImplBug of Lexing.position * string
 exception ImplBugV of Lexing.position * string * value
 exception ImplBugRanV of range * string * value
 exception Blame of range * polarity * value * string
-
-let errMsg_of_polarity plr v tgt = match plr with
-    Pos -> Printf.sprintf "Blame on the expression side: %s => %s" (string_of_val v) tgt
-  | Neg -> Printf.sprintf "Blame on the enviroment side: %s => %s" (string_of_val v) tgt
 
 let rec lookup idx = function
     Empty -> raise Not_found
@@ -125,7 +107,7 @@ let rec eval = function
      fun env ->
      (match proc env with
         Fun f -> let arg = arg env in
-                 (try f arg with Failure s -> raise (Blame(r,Pos, arg, s)))
+                 (try f arg with Failure s -> raise (Blame (r, Pos, arg, s)))
       | v -> raise (ImplBugV (r.frm, "application of nonprocedure value", v)))
   | TSFunExp (_, id, e) ->
      let body = eval e in  (**** shift -1 ****)
