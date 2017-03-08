@@ -23,6 +23,12 @@ let rec merge l1 l2 =
   | i1::l1', i2::l2' when i1 < i2 -> i1 :: i2 :: merge l1 l2'
   | i1::l1', i2::l2' -> i2 :: i1 :: merge l1 l2'
 
+let rec shiftTVs d = function
+    [] -> []
+  | i::l' -> let i' = i-d in
+             if i' < 0 then shiftTVs d l'
+             else i' :: shiftTVs d l'
+
 let rec forall p = function
     [] -> true
   | x::l -> p x && forall p l
@@ -31,8 +37,8 @@ let rec freeTVs i = function
     Int -> []
   | Bool -> []
   | Arr(ty1, ty2) -> merge (freeTVs i ty1) (freeTVs i ty2)
-  | TyVar j -> if j > i then [j] else []
-  | Forall(_, ty0) -> freeTVs (i+1) ty0
+  | TyVar j -> if j >= i then [j] else []
+  | Forall(_, ty0) -> shiftTVs (-1) (freeTVs (i+1) ty0)
   | Dyn -> []
 
 let freeTVs = freeTVs 0
