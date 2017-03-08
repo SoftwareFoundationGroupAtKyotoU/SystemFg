@@ -294,5 +294,5 @@ module FC =
           let f, tye = translate ctx e in
           if con ctx tye ty then
             FC.Decl (id, ty, putOpCast ctx tye ty f), ty
-          else errAt (tmPos e) "let: the type of exp isn't as declared"
+          else raise (TypeError2 (tmPos e, "let: the expression has type %a but is expected to have %a", ctx, tye, ty))
    end
