@@ -48,5 +48,5 @@ let rec print_val ppf = function
   | Tagged(I, v) -> pr ppf "%a : Int => *" print_val v
   | Tagged(B, v) -> pr ppf "%a : Bool => *" print_val v
   | Tagged(Ar, v) -> pr ppf "%a : *->* => *" print_val v
-  | Tagged(TV _, v) -> pr ppf "%a : X => *" print_val v
+  | Tagged(TV (_,name), v) -> pr ppf "%a : %s => *" print_val v name
     (* TODO: recover the tyvar name *)

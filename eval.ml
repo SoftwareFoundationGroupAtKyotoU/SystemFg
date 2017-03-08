@@ -2,7 +2,7 @@ open Support.Error
 open Syntax
 open FC
 
-type tag = I | B | Ar | TV of unit ref (* aka ground types *)
+type tag = I | B | Ar | TV of unit ref * id (* aka ground types *)
 
 type value =
   IntV of int
@@ -13,7 +13,7 @@ type value =
 and env =
   Empty
 | VB of value * env
-| TB of unit ref * env
+| TB of unit ref * id * env  (* id for blame message *)
 
 type polarity = Pos | Neg
 
@@ -27,7 +27,7 @@ exception Blame of range * polarity * value * string
 let rec lookup idx = function
     Empty -> raise Not_found
   | VB (v, env) -> if idx = 0 then v else lookup (idx-1) env
-  | TB (_, env) -> lookup (idx-1) env
+  | TB (_, _, env) -> lookup (idx-1) env
 
 let lookup pos idx env =
   try lookup idx env with
@@ -36,30 +36,34 @@ let lookup pos idx env =
 let rec lookupty idx = function
     Empty -> raise Not_found
   | VB (_, env) -> lookupty (idx-1) env
-  | TB (v, env) -> if idx = 0 then v else lookupty (idx-1) env
+  | TB (v, name, env) -> if idx = 0 then (v, name) else lookupty (idx-1) env
 
 let lookupty pos idx env =
   try lookupty idx env with
     Not_found -> raise (ImplBug (pos, "Can't happen (unbound tyvar: " ^ string_of_int idx ^ ")"))
 
 (* Primitive tag-testing functions *)
+exception Untagged
 let pervasive =
   let open Syntax in
   [("isInt", VDecl (Arr(Dyn,Bool)),
     Fun (fun v -> match v with
                     Tagged(I,_) -> BoolV true
-                  | Tagged(TV _,_) -> failwith "isInt"
-                  | _ -> BoolV false));
+                  | Tagged(TV (_,id),_) -> failwith "isInt"
+                  | Tagged(_, _) -> BoolV false
+                  | _ -> raise Untagged));
    ("isBool", VDecl (Arr(Dyn,Bool)),
     Fun (fun v -> match v with
                     Tagged(B,_) -> BoolV true
-                  | Tagged(TV _,_) -> failwith "isBool"
-                  | _ -> BoolV false));
+                  | Tagged(TV (_,id),_) -> failwith "isBool"
+                  | Tagged(_,_) -> BoolV false
+                  | _ -> raise Untagged));
    ("isFun", VDecl (Arr(Dyn,Bool)),
     Fun (fun v -> match v with
                     Tagged(Ar,_) -> BoolV true
-                  | Tagged(TV _,_) -> failwith "isFun"
-                  | _ -> BoolV false));
+                  | Tagged(TV (_,id),_) -> failwith "isFun"
+                  | Tagged(_,_) -> BoolV false
+                  | _ -> raise Untagged))
   ]
    
 let initial_env = List.fold_right (fun (_, _, f) env -> VB(f, env)) pervasive Empty 
@@ -107,14 +111,17 @@ let rec eval = function
      fun env ->
      (match proc env with
         Fun f -> let arg = arg env in
-                 (try f arg with Failure s -> raise (Blame (r, Pos, arg, s)))
+                 (try f arg with
+                    Untagged ->
+                      raise (ImplBugV (tmPos e2, "untagged value", arg))
+                  | Failure s -> raise (Blame (r, Pos, arg, s)))
       | v -> raise (ImplBugV (r.frm, "application of nonprocedure value", v)))
   | TSFunExp (_, id, e) ->
      let body = eval e in  (**** shift -1 ****)
      fun env -> TFun (fun () -> body env)
   | TGFunExp (_, id, e) ->
      let body = eval e in
-     fun env -> TFun (fun () -> let r = ref () in body (TB (r, env)))
+     fun env -> TFun (fun () -> let r = ref () in body (TB (r, id, env)))
   | TAppExp (r, e, _) ->
      let tfun = eval e in
      fun env ->
@@ -136,7 +143,7 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
   | Int, Dyn -> fun env v -> Tagged (I, v)
   | Bool, Dyn -> fun env v -> Tagged (B, v)
   | Arr(Dyn,Dyn), Dyn -> fun env v -> Tagged (Ar, v)
-  | TyVar id, Dyn -> fun env v -> Tagged (TV (lookupty r.frm id env), v)
+  | TyVar idx, Dyn -> fun env v -> let (key,name) = lookupty r.frm idx env in Tagged (TV (key,name), v)
   | Dyn, Int ->
      fun env v -> (match v with
                      Tagged(I, v0) -> v0
@@ -154,9 +161,10 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
                    | _ -> raise (ImplBugV (r.frm, "untagged value", v)))
   | Dyn, TyVar id ->
      fun env v -> (match v with
-                   | Tagged(TV key, v0) ->
-                      if lookupty r.frm id env == key then v0
-                      else raise (Blame (r, plr, v, "Y"))
+                   | Tagged(TV (key1,name), v0) ->
+                      let (key2,name) = lookupty r.frm id env in
+                      if key2 == key1 then v0
+                      else raise (Blame (r, plr, v, name))
                    | Tagged(_, _) -> raise (Blame (r, plr, v, "Z"))
                    | _ ->  raise (ImplBugV (r.frm, "untagged value", v)))
   | Arr(s1,t1), Arr(s2,t2) ->
@@ -173,7 +181,7 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
       | v -> raise (ImplBugV (r.frm, "application of non-tyabs", v)))
   | ty1, Forall(id2, ty2) ->
      let bodycast = (typeShift 1 0 ty1 ==> ty2) r plr in
-     fun env v -> TFun (fun () -> bodycast (TB(ref (), env)) v)
+     fun env v -> TFun (fun () -> bodycast (TB (ref (), id2, env)) v)
   | Forall(id1, ty1), ty2 ->
      let bodycast = (typeInst ty1 Dyn ==> ty2) r plr in
      (fun env -> function
