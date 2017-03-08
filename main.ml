@@ -30,10 +30,12 @@ let rec read_eval_print lexeme env tyenv =
     | Typing.TypeError2 (p, s, tyenv, ty1, ty2) ->
        pr std_formatter ("\n%a\n" ^^ s) print_pos p (Pp.print_type tyenv) ty1 (Pp.print_type tyenv) ty2;
        env, tyenv
-    | Blame (r, plr, v, s) ->
+    | Blame (r, plr, (Tagged(_,_,rv) as v), s) ->
        (match plr with
-          Pos -> pr std_formatter "\n%a\nBlame on the expression side: %a => %s\n" print_ran r Pp.print_val v s
-        | Neg -> pr std_formatter "\n%a\nBlame on the environment side: %a => %s\n" print_ran r Pp.print_val v s);
+          Pos -> pr std_formatter "\n%a\nBlame on the expression side: %a => %s\nValue source: %a\n"
+                    print_ran r Pp.print_val v s print_ran rv 
+        | Neg -> pr std_formatter "\n%a\nBlame on the environment side: %a => %s\nValue source: %a\n"
+                    print_ran r Pp.print_val v s print_ran rv);
        env, tyenv
     (* Fatal errors *)
     | ImplBug (p, s) ->

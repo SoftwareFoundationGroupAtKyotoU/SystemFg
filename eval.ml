@@ -9,7 +9,7 @@ type value =
 | BoolV of bool
 | Fun of (value -> value)
 | TFun of (unit -> value)
-| Tagged of tag * value
+| Tagged of tag * value * range
 and env =
   Empty
 | VB of value * env
@@ -48,21 +48,21 @@ let pervasive =
   let open Syntax in
   [("isInt", VDecl (Arr(Dyn,Bool)),
     Fun (fun v -> match v with
-                    Tagged(I,_) -> BoolV true
-                  | Tagged(TV (_,id),_) -> failwith "isInt"
-                  | Tagged(_, _) -> BoolV false
+                    Tagged(I,_,_) -> BoolV true
+                  | Tagged(TV (_,id),_,_) -> failwith "isInt"
+                  | Tagged(_, _,_) -> BoolV false
                   | _ -> raise Untagged));
    ("isBool", VDecl (Arr(Dyn,Bool)),
     Fun (fun v -> match v with
-                    Tagged(B,_) -> BoolV true
-                  | Tagged(TV (_,id),_) -> failwith "isBool"
-                  | Tagged(_,_) -> BoolV false
+                    Tagged(B,_,_) -> BoolV true
+                  | Tagged(TV (_,id),_,_) -> failwith "isBool"
+                  | Tagged(_,_,_) -> BoolV false
                   | _ -> raise Untagged));
    ("isFun", VDecl (Arr(Dyn,Bool)),
     Fun (fun v -> match v with
-                    Tagged(Ar,_) -> BoolV true
-                  | Tagged(TV (_,id),_) -> failwith "isFun"
-                  | Tagged(_,_) -> BoolV false
+                    Tagged(Ar,_,_) -> BoolV true
+                  | Tagged(TV (_,id),_,_) -> failwith "isFun"
+                  | Tagged(_,_,_) -> BoolV false
                   | _ -> raise Untagged))
   ]
    
@@ -140,32 +140,32 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
      if id1 = id2 then fun env v -> v
      else raise (ImplBug (r.frm, ("incompatible types "^string_of_int id1^" and "^ string_of_int id2)))
   | Dyn, Dyn -> fun env v -> v
-  | Int, Dyn -> fun env v -> Tagged (I, v)
-  | Bool, Dyn -> fun env v -> Tagged (B, v)
-  | Arr(Dyn,Dyn), Dyn -> fun env v -> Tagged (Ar, v)
-  | TyVar idx, Dyn -> fun env v -> let (key,name) = lookupty r.frm idx env in Tagged (TV (key,name), v)
+  | Int, Dyn -> fun env v -> Tagged (I, v, r)
+  | Bool, Dyn -> fun env v -> Tagged (B, v, r)
+  | Arr(Dyn,Dyn), Dyn -> fun env v -> Tagged (Ar, v, r)
+  | TyVar idx, Dyn -> fun env v -> let (key,name) = lookupty r.frm idx env in Tagged (TV (key,name), v, r)
   | Dyn, Int ->
      fun env v -> (match v with
-                     Tagged(I, v0) -> v0
-                   | Tagged(_, _) -> raise (Blame (r, plr, v, "Int"))
+                     Tagged(I, v0, _) -> v0
+                   | Tagged(_, _, _) -> raise (Blame (r, plr, v, "Int"))
                    | _ -> raise (ImplBugV (r.frm, "untagged value", v)))
   | Dyn, Bool ->
      fun env v -> (match v with
-                     Tagged(B, v0) -> v0
-                   | Tagged(_, _) -> raise (Blame (r, plr, v, "Bool"))
+                     Tagged(B, v0, _) -> v0
+                   | Tagged(_, _, _) -> raise (Blame (r, plr, v, "Bool"))
                    | _ -> raise (ImplBugV (r.frm, "untagged value", v)))
   | Dyn, Arr(Dyn,Dyn) ->
      fun env v -> (match v with
-                   | Tagged(Ar, v0) -> v0
-                   | Tagged(_, _) -> raise (Blame (r, plr, v, "*->*"))
+                   | Tagged(Ar, v0, _) -> v0
+                   | Tagged(_, _, _) -> raise (Blame (r, plr, v, "*->*"))
                    | _ -> raise (ImplBugV (r.frm, "untagged value", v)))
   | Dyn, TyVar id ->
      fun env v -> (match v with
-                   | Tagged(TV (key1,name), v0) ->
+                   | Tagged(TV (key1,name), v0, _) ->
                       let (key2,name) = lookupty r.frm id env in
                       if key2 == key1 then v0
                       else raise (Blame (r, plr, v, name))
-                   | Tagged(_, _) -> raise (Blame (r, plr, v, "Z"))
+                   | Tagged(_, _, _) -> raise (Blame (r, plr, v, "Z"))
                    | _ ->  raise (ImplBugV (r.frm, "untagged value", v)))
   | Arr(s1,t1), Arr(s2,t2) ->
      let argcast = (s2 ==> s1) r (neg plr) in
@@ -189,10 +189,10 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
       | v ->  raise (ImplBugV (r.frm, "application of non-tyabs", v)))
   | Arr(s1,t1) as ty, Dyn ->
      let cast = (ty ==> Arr(Dyn, Dyn)) r plr in
-     fun env v -> Tagged (Ar, cast env v)
+     fun env v -> Tagged (Ar, cast env v, r)
   | Dyn, (Arr(s, t) as ty) ->
      let cast = (Arr(Dyn,Dyn) ==> ty) r plr in
-     fun env v -> cast env (Tagged (Ar, v))
+     fun env v -> cast env (Tagged (Ar, v, r))
   | _, _ -> raise (ImplBug (r.frm, "non-compatible types encountered in (==>)"))
 
 let eval_decl env tyenv = function
