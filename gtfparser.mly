@@ -23,6 +23,9 @@ toplevel :
   | LET id=LCID plist=letParamList COLON ty=ty EQ e=expr SEMISEMI { fun ctx ->
       let t = plist ctx e (Some ty) in
       Decl (id.v, t) }
+  | LET id=LCID plist=letParamList EQ e=expr SEMISEMI { fun ctx ->
+      let t = plist ctx e None in
+      Decl (id.v, t) }
 /*
   | LET REC ID EQ FUN ID RARROW Expr SEMISEMI { RecDecl ($3, $6, $8) }
 */
