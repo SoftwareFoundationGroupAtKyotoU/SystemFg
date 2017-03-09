@@ -84,12 +84,7 @@ module FG =
          | AscExp(r, _, _) | CastExp(r, _, _, _))
         -> r
 
-    let tmPos = function
-        (Var(r, _) | IConst(r, _) | BConst(r, _) | BinOp(r, _, _, _)
-         | IfExp(r, _, _, _) | FunExp(r, _, _, _)
-         | AppExp(r, _, _) | TFunExp(r, _, _) | TAppExp(r, _, _)
-         | AscExp(r, _, _) | CastExp(r, _, _, _))
-        -> r.frm
+    let tmPos t = (tmRan t).frm
 
     let join_range_exps e1 e2 =
       join_range (tmRan e1) (tmRan e2)
@@ -122,12 +117,7 @@ module FC =
          | TAppExp(r, _, _) | CastExp(r, _, _, _))
         -> r
 
-    let tmPos = function
-        (Var(r, _) | IConst(r, _) | BConst(r, _) | BinOp(r, _, _, _)
-         | IfExp(r, _, _, _) | FunExp(r, _, _, _)
-         | AppExp(r, _, _) | TSFunExp(r, _, _) | TGFunExp(r, _, _)
-         | TAppExp(r, _, _) | CastExp(r, _, _, _))
-        -> r.frm
+    let tmPos t = (tmRan t).frm
 
     let join_range_exps e1 e2 =
       join_range (tmRan e1) (tmRan e2)
