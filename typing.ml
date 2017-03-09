@@ -222,9 +222,9 @@ module FC =
        | Forall(_,ty11) -> f1, ty11
        | ty -> raise (TypeError (FC.tmPos f1, "The expression has type %a but is expected to have All or *", ctx, ty))
 
-     let putOpCast ctx src tgt f =
+     let putOpCast f ?(ran=FC.tmRan f) ctx src tgt =
        if src = tgt then f
-       else FC.CastExp(FC.tmRan f, f, src, tgt)
+       else FC.CastExp(ran, f, src, tgt)
 
      let rec translate ctx = function
          Var(r,i) ->
@@ -238,7 +238,7 @@ module FC =
           let ty1', ty2', ty3 = typeOfBin op in
           if con ctx ty1 ty1' then
             if con ctx ty2 ty2' then
-              FC.BinOp(r, op, putOpCast ctx ty1 ty1' f1, putOpCast ctx ty2 ty2' f2),
+              FC.BinOp(r, op, putOpCast f1 ctx ty1 ty1', putOpCast f2 ctx ty2 ty2'),
               ty3
             else raise (TypeError2 (tmPos e2, "binop: the second arg has type %a but is expected to have type %a", ctx, ty2, ty2'))
           else raise (TypeError2 (tmPos e1, "binop: the first arg has type %a but is expected to have type %a", ctx, ty1, ty1'))
@@ -249,9 +249,9 @@ module FC =
                      let (f2, ty2) = translate ctx e2 in
                      let (f3, ty3) = translate ctx e3 in
                      (match meet ctx ty2 ty3 with
-                        Some ty -> FC.IfExp(r, putOpCast ctx ty1 Bool f1,
-                                            putOpCast ctx ty2 ty f2,
-                                            putOpCast ctx ty3 ty f3),
+                        Some ty -> FC.IfExp(r, putOpCast f1 ctx ty1 Bool,
+                                            putOpCast f2 ctx ty2 ty,
+                                            putOpCast f3 ctx ty3 ty),
                                    ty
                       | None -> raise (TypeError2 (r.frm, "if: types of branches %a and %a do not match (no meet)", ctx, ty2, ty3)))
            | ty1 -> raise (TypeError (tmPos e1, "if: the test exp has type %a but is expected to have type Bool or *", ctx, ty1)))
@@ -277,7 +277,7 @@ module FC =
           FC.TAppExp(r, f1', ty), typeInst ty1' ty
        | AscExp(r, e1, ty) ->
           let f1, ty1 = translate ctx e1 in
-          if con ctx ty1 ty then FC.CastExp(r, f1, ty1, ty), ty
+          if con ctx ty1 ty then putOpCast f1 ~ran:r ctx ty1 ty, ty
           else raise (TypeError2 (r.frm, "Ascription: the expression has type %a but is not consistent with %a", ctx, ty1, ty))
        | CastExp(r, e0, ty1, ty2) ->
           let f1, ty1' = translate ctx e0 in
@@ -293,6 +293,6 @@ module FC =
        | Decl(id, ty, e) ->
           let f, tye = translate ctx e in
           if con ctx tye ty then
-            FC.Decl (id, ty, putOpCast ctx tye ty f), ty
+            FC.Decl (id, ty, putOpCast f ctx tye ty), ty
           else raise (TypeError2 (tmPos e, "let: the expression has type %a but is expected to have %a", ctx, tye, ty))
    end
