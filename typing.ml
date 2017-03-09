@@ -275,6 +275,10 @@ module FC =
           let f1, ty1 = translate ctx e1 in
           let f1', ty1' = matchingTFun ctx f1 ty1 in
           FC.TAppExp(r, f1', ty), typeInst ty1' ty
+       | LetExp(r, id, e1, e2) ->
+          let f1, ty1 = translate ctx e1 in
+          let f2, ty2 = translate ((id, VDecl ty1)::ctx) e2 in
+          FC.AppExp(r, FC.FunExp(Support.Error.dummy_range,id,ty1,f2), f1), ty2
        | AscExp(r, e1, ty) ->
           let f1, ty1 = translate ctx e1 in
           if con ctx ty1 ty then putOpCast f1 ~ran:r ctx ty1 ty, ty

@@ -15,6 +15,9 @@ type binding =
 | STVar
 | GTVar
 | PossiblySTVar of bool ref
+| Dummy  (* binding that occurs only during parsing 
+            -- After all, name2index is the only function applied to ctx 
+               during parsing and it ignores the kind of binding *)
 
 type tyenv = (id * binding) list
 exception UnboundVar of Lexing.position * string
@@ -70,6 +73,7 @@ module FG =
     | AppExp of range * term * term
     | TFunExp of range * id * term  (* the body must be a syntactic value and parameter is not needed *)
     | TAppExp of range * term * ty
+    | LetExp of range * id * term * term
     | AscExp of range * term * ty (* type ascription *)
     | CastExp of range * term * ty * ty
 
@@ -81,7 +85,7 @@ module FG =
         (Var(r, _) | IConst(r, _) | BConst(r, _) | BinOp(r, _, _, _)
          | IfExp(r, _, _, _) | FunExp(r, _, _, _)
          | AppExp(r, _, _) | TFunExp(r, _, _) | TAppExp(r, _, _)
-         | AscExp(r, _, _) | CastExp(r, _, _, _))
+         | LetExp(r, _, _, _) | AscExp(r, _, _) | CastExp(r, _, _, _))
         -> r
 
     let tmPos t = (tmRan t).frm

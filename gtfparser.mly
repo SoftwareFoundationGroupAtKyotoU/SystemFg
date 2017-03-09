@@ -86,9 +86,8 @@ ifExpr :
 letExpr :
     start=LET id=LCID plist=letParamList COLON ty=ty EQ e=expr IN body=expr { fun ctx ->
       let (t, ty) = plist ctx e ty in
-      let body = body ((id.v,VDecl ty)::ctx) in
-      AppExp(join_range start (tmRan body),
-             FunExp(Support.Error.dummy_range, id.v, ty, body), t)
+      let body = body ((id.v, Dummy)::ctx) in
+      LetExp(join_range start (tmRan body), id.v, t, body)
     }
 
 funExpr :
@@ -102,20 +101,20 @@ LetRecExpr :
 funParamList :
     start=LPAREN id=LCID COLON ty=ty RPAREN { fun ctx t ->
       let ty = ty ctx in
-      let body = t ((id.v,VDecl ty)::ctx) in
+      let body = t ((id.v, Dummy (* VDecl ty*))::ctx) in
       FunExp(join_range start (tmRan body), id.v, ty, body)
     }
   | id=UCID { fun ctx t ->
-      let body = t ((id.v,PossiblySTVar (ref true))::ctx) in
+      let body = t ((id.v, Dummy (* PossiblySTVar (ref true) *))::ctx) in
       TFunExp(join_range id.r (tmRan body), id.v, body)
     }
   | start=LPAREN id=LCID COLON ty=ty RPAREN rest=funParamList { fun ctx t ->
       let ty = ty ctx in
-      let body = rest ((id.v,VDecl ty)::ctx) t in
+      let body = rest ((id.v, Dummy (* VDecl ty *))::ctx) t in
       FunExp(join_range start (tmRan body), id.v, ty, body)
     }
   | id=UCID rest=funParamList { fun ctx t ->
-      let body = rest ((id.v,PossiblySTVar (ref true))::ctx) t in
+      let body = rest ((id.v, Dummy (* PossiblySTVar (ref true) *))::ctx) t in
       TFunExp(join_range id.r (tmRan body), id.v, body)
     }
 
@@ -127,11 +126,11 @@ letParamList :
     }
   | start=LPAREN id=LCID COLON paramty=ty RPAREN rest=letParamList { fun ctx t ty ->
        let paramty = paramty ctx in
-       let (t, ty) = rest ((id.v, VDecl paramty)::ctx) t ty in
+       let (t, ty) = rest ((id.v, Dummy (* VDecl paramty *))::ctx) t ty in
        FunExp(join_range start (tmRan t), id.v, paramty, t), Arr(paramty, typeShift (-1) 0 ty)
     }
   | id=UCID rest=letParamList { fun ctx t ty ->
-       let (t', ty') = rest ((id.v,PossiblySTVar (ref true))::ctx) t ty in
+       let (t', ty') = rest ((id.v, Dummy (* PossiblySTVar (ref true) *))::ctx) t ty in
        TFunExp(join_range id.r (tmRan t'), id.v, t'), Forall(id.v, ty')
     }
 
@@ -141,10 +140,10 @@ ty :
   | ty=aType { ty }
 
 neTVSeq : /* nonempty type var sequence */
-    id=PRIMEUCID { fun ctx ty -> Forall(id.v, ty ((id.v,STVar)::ctx)) }
-  | id=UCID { fun ctx ty -> Forall(id.v, ty ((id.v,GTVar)::ctx)) }
-  | id=PRIMEUCID rest=neTVSeq { fun ctx ty -> Forall(id.v, rest ((id.v,STVar)::ctx) ty) }
-  | id=UCID rest=neTVSeq { fun ctx ty -> Forall(id.v, rest ((id.v,GTVar)::ctx) ty) }
+    id=PRIMEUCID { fun ctx ty -> Forall(id.v, ty ((id.v, Dummy (* STVar *))::ctx)) }
+  | id=UCID { fun ctx ty -> Forall(id.v, ty ((id.v, Dummy (* GTVar *))::ctx)) }
+  | id=PRIMEUCID rest=neTVSeq { fun ctx ty -> Forall(id.v, rest ((id.v, Dummy (* STVar *))::ctx) ty) }
+  | id=UCID rest=neTVSeq { fun ctx ty -> Forall(id.v, rest ((id.v, Dummy (* GTVar *))::ctx) ty) }
 
 aType :
     INT { fun ctx -> Int }
