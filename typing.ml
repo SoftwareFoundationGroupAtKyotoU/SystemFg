@@ -292,7 +292,12 @@ module FC =
          FC.Prog f, tye
        | Decl(id, ty, e) ->
           let f, tye = translate ctx e in
+          assert(ty = tye);
+          FC.Decl(id, tye, f), tye
+          (* if the assertion above fails, the following may be used as a backup *)
+          (*
           if con ctx tye ty then
             FC.Decl (id, ty, putOpCast f ctx tye ty), ty
           else raise (TypeError2 (tmPos e, "let: the expression has type %a but is expected to have %a", ctx, tye, ty))
+           *)
    end
