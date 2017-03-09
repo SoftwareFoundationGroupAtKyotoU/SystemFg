@@ -61,6 +61,7 @@ module FG =
     | BinOp of range * op * term * term
     | IfExp of range * term * term * term
     | FunExp of range * id * ty * term
+    | FixExp of range * id * id * ty * ty * term
     | AppExp of range * term * term
     | TFunExp of range * id * term  (* the body must be a syntactic value and parameter is not needed *)
     | TAppExp of range * term * ty
@@ -74,7 +75,7 @@ module FG =
 
     let tmRan = function
         (Var(r, _) | IConst(r, _) | BConst(r, _) | BinOp(r, _, _, _)
-         | IfExp(r, _, _, _) | FunExp(r, _, _, _)
+         | IfExp(r, _, _, _) | FunExp(r, _, _, _) | FixExp(r, _, _, _, _, _)
          | AppExp(r, _, _) | TFunExp(r, _, _) | TAppExp(r, _, _)
          | LetExp(r, _, _, _) | AscExp(r, _, _) | CastExp(r, _, _, _))
         -> r
@@ -95,6 +96,7 @@ module FC =
     | BinOp of range * op * term * term
     | IfExp of range * term * term * term
     | FunExp of range * id * ty * term
+    | FixExp of range * id * id * ty * ty * term
     | AppExp of range * term * term
     | TSFunExp of range * id * term  (* the body must be a syntactic value and parameter is not needed *)
     | TGFunExp of range * id * term
@@ -107,7 +109,7 @@ module FC =
 
     let tmRan = function
         (Var(r, _) | IConst(r, _) | BConst(r, _) | BinOp(r, _, _, _)
-         | IfExp(r, _, _, _) | FunExp(r, _, _, _)
+         | IfExp(r, _, _, _) | FunExp(r, _, _, _) | FixExp(r, _, _, _, _, _)
          | AppExp(r, _, _) | TSFunExp(r, _, _) | TGFunExp(r, _, _)
          | TAppExp(r, _, _) | CastExp(r, _, _, _))
         -> r

@@ -21,20 +21,25 @@ open FG
 toplevel :
     e=expr SEMISEMI { fun ctx -> Prog (e ctx) }
   | LET id=LCID plist=letParamList COLON ty=ty EQ e=expr SEMISEMI { fun ctx ->
-      let t = plist ctx e (Some ty) in
+      let t, _ = plist ctx e (Some ty) in
       Decl (id.v, t) }
   | LET id=LCID plist=letParamList EQ e=expr SEMISEMI { fun ctx ->
-      let t = plist ctx e None in
+      let t, _ = plist ctx e None in
       Decl (id.v, t) }
-/*
-  | LET REC ID EQ FUN ID RARROW Expr SEMISEMI { RecDecl ($3, $6, $8) }
-*/
+  | start=LET REC id1=LCID LPAREN id2=LCID COLON ty2=ty RPAREN
+                     plist=letParamList COLON ty3=ty EQ e=expr SEMISEMI { fun ctx ->
+      let t2, codtyop = plist ((id2.v, Dummy)::(id1.v, Dummy)::ctx) e (Some ty3) in
+      match codtyop with
+          Some codty ->
+          Decl (id1.v, FixExp(join_range start (tmRan t2),id1.v,id2.v,ty2 ctx,typeShift (-2) 0 codty,t2))
+        | None -> failwith "Can't happen: toplevel in gtfparser.mly"
+    }
+
 
 expr :
     e=ifExpr { e }
   | e=funExpr { e }
   | e=letExpr { e }
-/*  | letRecExpr { $1 } */
   | e=lTExpr { e }
 
 lTExpr :
@@ -88,14 +93,24 @@ ifExpr :
 
 letExpr :
     start=LET id=LCID plist=letParamList COLON ty=ty EQ e=expr IN body=expr { fun ctx ->
-      let t = plist ctx e (Some ty) in
+      let t, _ = plist ctx e (Some ty) in
       let body = body ((id.v, Dummy)::ctx) in
       LetExp(join_range start (tmRan body), id.v, t, body)
     }
   | start=LET id=LCID plist=letParamList EQ e=expr IN body=expr { fun ctx ->
-      let t = plist ctx e None in
+      let t, _ = plist ctx e None in
       let body = body ((id.v, Dummy)::ctx) in
       LetExp(join_range start (tmRan body), id.v, t, body)
+    }
+  | start=LET REC id1=LCID LPAREN id2=LCID COLON ty2=ty RPAREN
+                           plist=letParamList COLON ty3=ty EQ e=expr IN body=expr { fun ctx ->
+      let t2, codtyop = plist ((id2.v, Dummy)::(id1.v, Dummy)::ctx) e (Some ty3) in
+      match codtyop with
+          Some codty ->
+          let f = FixExp(join_range start (tmRan t2),id1.v,id2.v,ty2 ctx,typeShift (-2) 0 codty,t2) in
+          let body = body ((id1.v, Dummy)::ctx) in
+          LetExp(join_range start (tmRan body), id1.v, f, body)
+        | None -> failwith "Can't happen: letExpr in gtfparser.mly"
     }
 
 funExpr :
@@ -129,18 +144,24 @@ funParamList :
 letParamList :
     /* empty */ { fun ctx t tyop ->
        match tyop with
-          Some ty -> let t, ty = t ctx, ty ctx in AscExp(tmRan t, t, ty)
+          Some ty -> let t, ty = t ctx, ty ctx in AscExp(tmRan t, t, ty), Some ty
            (* the source location information is a bit imprecise *)
-        | None -> t ctx
+        | None -> t ctx, None
     }
   | start=LPAREN id=LCID COLON paramty=ty RPAREN rest=letParamList { fun ctx t tyop ->
        let paramty = paramty ctx in
-       let t = rest ((id.v, Dummy (* VDecl paramty *))::ctx) t tyop in
-       FunExp(join_range start (tmRan t), id.v, paramty, t)
+       let t, tyop' = rest ((id.v, Dummy (* VDecl paramty *))::ctx) t tyop in
+       FunExp(join_range start (tmRan t), id.v, paramty, t),
+       match tyop' with
+          Some ty' -> Some (Arr(paramty,ty'))
+        | None -> None
     }
   | id=UCID rest=letParamList { fun ctx t tyop ->
-       let t' = rest ((id.v, Dummy (* PossiblySTVar (ref true) *))::ctx) t tyop in
-       TFunExp(join_range id.r (tmRan t'), id.v, t')
+       let t', tyop' = rest ((id.v, Dummy (* PossiblySTVar (ref true) *))::ctx) t tyop in
+       TFunExp(join_range id.r (tmRan t'), id.v, t'),
+       match tyop' with
+          Some ty' -> Some (Forall(id.v, ty'))
+        | None -> None
     }
 
 ty :

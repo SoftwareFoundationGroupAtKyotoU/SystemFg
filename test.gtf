@@ -50,3 +50,10 @@ let gradk : All X.X -> * -> X = dynk;;
 let polyk : All X Y. X->Y->X = gradk;;
 
 polyk [Int] [Bool] 4 true;;
+
+// Recursion
+let rec sum (x:Int) : Int = if x < 1 then 0 else x + sum (x + (-1));;
+sum 10;;
+
+let sum2 = let rec f (x:Int) : Int = if x < 1 then 0 else x + f (x + (-1)) in f;;
+sum2 10;;

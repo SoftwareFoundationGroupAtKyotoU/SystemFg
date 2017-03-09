@@ -105,6 +105,11 @@ let rec eval = function
   | FunExp (_, id, _, e) ->
      let body = eval e in
      fun env -> Fun (fun v -> body (VB (v, env)))
+  | FixExp (_, id1, id2, _, _, e) ->
+     let body = eval e in
+     fun env ->
+     let rec f v = body (VB (v, VB (Fun f, env))) in
+     Fun f
   | AppExp (r, e1, e2) ->
      let proc = eval e1 in
      let arg = eval e2 in
