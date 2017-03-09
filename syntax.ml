@@ -79,7 +79,7 @@ module FG =
 
     type program =
       Prog of term
-    | Decl of id * ty * term
+    | Decl of id * term
 
     let tmRan = function
         (Var(r, _) | IConst(r, _) | BConst(r, _) | BinOp(r, _, _, _)
@@ -112,7 +112,7 @@ module FC =
 
     type program =
       Prog of term
-    | Decl of id * ty * term
+    | Decl of id * term
 
     let tmRan = function
         (Var(r, _) | IConst(r, _) | BConst(r, _) | BinOp(r, _, _, _)

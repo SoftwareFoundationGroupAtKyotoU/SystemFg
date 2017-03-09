@@ -12,9 +12,19 @@ let rec read_eval_print lexeme env tyenv =
   let newenv, newtyenv =
     try
       let decl = Gtfparser.toplevel Gtflexer.main lexeme in
-      let decl, ty = Typing.FG.translateDecl tyenv (decl tyenv) in
-      assert(ty = Typing.FC.typingDecl tyenv decl);
-      let (id, v, newenv, newtyenv) = Eval.eval_decl env tyenv decl in
+      let decl, tye = Typing.FG.translateDecl tyenv (decl tyenv) in
+      let ty = Typing.FC.typingDecl tyenv decl in
+      (* tye is inferred by translation;
+         ty is inferred by typechecking;
+         they should agree *)
+      assert(ty = tye);
+      let (id, v, newenv, newtyenv) = match decl with
+          Syntax.FC.Prog e ->
+            let v = eval e env in
+            ("-", v, env, tyenv)
+        | Syntax.FC.Decl(id, e) ->
+           let v = eval e env in
+           (id, v, VB(v, env), (id, Syntax.VDecl ty)::tyenv) in
       pr std_formatter "%s : %a = %a\n" id (Pp.print_type tyenv) ty Pp.print_val v;
       newenv, newtyenv
     with

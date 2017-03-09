@@ -194,9 +194,3 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
      let cast = (Arr(Dyn,Dyn) ==> ty) r plr in
      fun env v -> cast env (Tagged (Ar, v, r))
   | _, _ -> raise (ImplBug (r.frm, "non-compatible types encountered in (==>)"))
-
-let eval_decl env tyenv = function
-    Prog e -> let v = eval e env in
-              ("-", v, env, tyenv)
-  | Decl(id, ty, e) -> let v = eval e env in
-                       (id, v, VB(v, env), (id, VDecl ty)::tyenv)

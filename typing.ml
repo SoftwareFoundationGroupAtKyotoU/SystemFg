@@ -171,11 +171,7 @@ module FC =
          else raise (TypeError2 (tmPos e0, "cast: the expression has type %a but is expected to have %a", ctx, ty0, ty1))
 
     let typingDecl ctx = function
-        Prog e -> typeOf ctx e
-      | Decl(_, ty, e) ->
-         let tye = typeOf ctx e in
-         if ty = tye then ty
-         else raise (TypeError2 (tmPos e, "let: the expression has type %a but is expected to have %a", ctx, tye, ty))
+        Prog e | Decl(_, e) -> typeOf ctx e
   end
 
  module FG =
@@ -292,16 +288,9 @@ module FC =
 
      let translateDecl ctx = function
          Prog e ->
-         let f, tye = translate ctx e in
-         FC.Prog f, tye
-       | Decl(id, ty, e) ->
           let f, tye = translate ctx e in
-          assert(ty = tye);
-          FC.Decl(id, tye, f), tye
-          (* if the assertion above fails, the following may be used as a backup *)
-          (*
-          if con ctx tye ty then
-            FC.Decl (id, ty, putOpCast f ctx tye ty), ty
-          else raise (TypeError2 (tmPos e, "let: the expression has type %a but is expected to have %a", ctx, tye, ty))
-           *)
+          FC.Prog f, tye
+       | Decl(id, e) ->
+          let f, tye = translate ctx e in
+          FC.Decl(id, f), tye
    end
