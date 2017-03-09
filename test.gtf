@@ -1,31 +1,52 @@
-let id (x:*) : * = x;;
+// gradual typing
+let dsucc (x:*) : * = x + 1;;
+dsucc 4;;
+dsucc true;;
 
-let polyid : All X.X->X = (id : All X.X->X);;
+let ssucc (x:Int) : Int = x + 1;;
+ssucc 4;;
+ssucc true;;
 
-polyid [Int] 2;;
+let ssucc2 : Int -> Int = dsucc;;
+ssucc2 4;;
+ssucc2 true;;
 
-let dynsucc : *->* = fun (x:*) -> 1 + x;;
+let neg(b:Bool) : Bool = if b then false else true;;
 
-dynsucc 4;;
+let dtwice (f:*->*) (x:*) : * = f (f x);;
+dtwice ssucc 5;;
+dtwice neg true;;
 
-let wrongpolyid : All X.X->X = (dynsucc : All X.X->X);;
+let twice_int (f:Int->Int) (x:Int) : Int = f (f x);;
+let twice_bool (f:Bool->Bool) (x:Bool) : Bool = f (f x);;
 
-wrongpolyid [Int] 4;;
+let funny_twice (f:*->*) (x:*) : * = f ((f x) + 2);;
+funny_twice ssucc 5;;
+funny_twice neg true;;
 
-let id2 X (x:X) : X = x;;
+let twice_int2 : (Int->Int)->Int->Int = funny_twice;;
+twice_int2 ssucc 5;;
 
-let castid : * -> * = (id2 : *->*);;
+// polymorphism
+let poly_twice X (f: X->X) (x:X) : X = f(f x);;
+poly_twice [Int] ssucc 5;;
+poly_twice [Bool] neg true;;
 
-castid (3 : *);;
+let twice : All X.(X->X)->(X->X) = dtwice;;
+twice [Int] ssucc 5;;
+twice [Bool] neg true;;
 
-fun X (x:X) -> (x:*);;
+let wrong_twice : All A.(A->A)->(A->A) = funny_twice;;
+wrong_twice [Bool] neg true;;
+wrong_twice [Int] ssucc 5;;
 
-let f X (x:X) : * = (x:*);;
 
-fun X Y (x:X) (y:Y) -> x;;
+// K combinator, gradually
 
-let k X Y (x:X) (y:Y) : X = x;;
+let dynk (x:*) (y:*) : * = x;;
 
-((1 : *) : Bool);;
+let gradk : All X.X -> * -> X = dynk;;
 
-(fun X Y (x : X) -> ((x : *) : Y)) [Int] [Int] 1;;
+let polyk : All X Y. X->Y->X = gradk;;
+
+polyk [Int] [Bool] 4 true;;
