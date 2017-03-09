@@ -3,7 +3,7 @@ let dsucc (x:*) : * = x + 1;;
 dsucc 4;;
 dsucc true;;
 
-let ssucc (x:Int) : Int = x + 1;;
+let ssucc (x:Int) = x + 1;;
 ssucc 4;;
 ssucc true;;
 
@@ -11,16 +11,16 @@ let ssucc2 : Int -> Int = dsucc;;
 ssucc2 4;;
 ssucc2 true;;
 
-let neg(b:Bool) : Bool = if b then false else true;;
+let neg(b:Bool) = if b then false else true;;
 
-let dtwice (f:*->*) (x:*) : * = f (f x);;
+let dtwice (f:*->*) (x:*) = f (f x);;
 dtwice ssucc 5;;
 dtwice neg true;;
 
-let twice_int (f:Int->Int) (x:Int) : Int = f (f x);;
-let twice_bool (f:Bool->Bool) (x:Bool) : Bool = f (f x);;
+let twice_int (f:Int->Int) (x:Int) = f (f x);;
+let twice_bool (f:Bool->Bool) (x:Bool) = f (f x);;
 
-let funny_twice (f:*->*) (x:*) : * = f ((f x) + 2);;
+let funny_twice (f:*->*) (x:*) = f ((f x) + 2);;
 funny_twice ssucc 5;;
 funny_twice neg true;;
 
@@ -28,7 +28,7 @@ let twice_int2 : (Int->Int)->Int->Int = funny_twice;;
 twice_int2 ssucc 5;;
 
 // polymorphism
-let poly_twice X (f: X->X) (x:X) : X = f(f x);;
+let poly_twice X (f: X->X) (x:X) = f(f x);;
 poly_twice [Int] ssucc 5;;
 poly_twice [Bool] neg true;;
 
@@ -43,7 +43,7 @@ wrong_twice [Int] ssucc 5;;
 
 // K combinator, gradually
 
-let dynk (x:*) (y:*) : * = x;;
+let dynk (x:*) (y:*) = x;;
 
 let gradk : All X.X -> * -> X = dynk;;
 
