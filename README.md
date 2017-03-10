@@ -28,8 +28,14 @@
 
 ## TODO
 
-* Add more test inputs in test.gtf (Fg)
+* Add more test inputs in test.gtf
+
+## Wish List
+
+* Data structures: pairs and lists
+* Implement reduction (not evaluation) for assist proofs
+    * pretty printer for Fg- ad Fc-terms
 
 ## Known bugs
 
-* `print_type` doesn't handle variable names declared twice or parentheses very well
+* `print_type` doesn't handle variable names declared twice properly.
