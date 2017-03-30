@@ -290,7 +290,7 @@ module FC =
        | AscExp(r, e1, ty) ->
           let f1, ty1 = translate ctx e1 in
           if con ctx ty1 ty then putOpCast f1 ~ran:r ctx ty1 ty, ty
-          else raise (TypeError2 (r.frm, "Ascription: the expression has type %a but is not consistent with %a", ctx, ty1, ty))
+          else raise (TypeError2 ((tmRan e1).frm, "Ascription: the expression has type %a but is not consistent with %a", ctx, ty1, ty))
        | CastExp(r, e0, ty1, ty2) ->
           let f1, ty1' = translate ctx e0 in
           if ty1 = ty1' then
