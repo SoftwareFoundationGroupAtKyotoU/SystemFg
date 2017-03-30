@@ -156,7 +156,7 @@ module FC =
          let ty1 = typeOf ctx e1 in
          let ty2 = typeOf ctx e2 in
          (match ty1 with
-          | Arr(ty11, ty12) when con ctx ty11 ty2 -> ty12
+          | Arr(ty11, ty12) when ty11 = ty2 -> ty12
           | Arr(ty11, _) ->
              raise (TypeError2 (r.frm, "app: the argument has type %a but is expected to be consistent with %a", ctx, ty2, ty11))
           | _ -> raise (TypeError (tmPos e1, "app: the expression has type %a but is expected to have -> or *", ctx, ty1)))
