@@ -51,19 +51,19 @@ let rec containsDyn = function
   | Forall(_, ty0) -> containsDyn ty0
   | Dyn -> true
 
-let rec con ctx ty1 ty2 =
+let rec precon isG ctx ty1 ty2 =
   ty1 = ty2 ||
     match ty1, ty2 with
       Arr(tys1, tyt1), Arr(tys2, tyt2) ->
-        con ctx tys1 tys2 && con ctx tyt1 tyt2
+        precon isG ctx tys1 tys2 && precon isG ctx tyt1 tyt2
     | Forall(id, ty1'), Forall(_, ty2') ->
-       con ((id,STVar)::ctx) ty1' ty2'
+       precon isG ((id,STVar)::ctx) ty1' ty2'
     | Forall(id, ty1'), _ ->
-       containsDyn ty2 && con ((id,GTVar)::ctx) ty1' (typeShift 1 0 ty2)
+       containsDyn ty2 && precon isG ((id,GTVar)::ctx) ty1' (typeShift 1 0 ty2)
     | _, Forall(id, ty2') ->
-       containsDyn ty1 && con ((id,GTVar)::ctx) (typeShift 1 0 ty1) ty2'
-    | Dyn, _ -> forall (isGradual ctx) (freeTVs ty2)
-    | _, Dyn -> forall (isGradual ctx) (freeTVs ty1)
+       containsDyn ty1 && precon isG ((id,GTVar)::ctx) (typeShift 1 0 ty1) ty2'
+    | Dyn, _ -> forall (isG ctx) (freeTVs ty2)
+    | _, Dyn -> forall (isG ctx) (freeTVs ty1)
     | _ -> false
 
 let rec join ctx ty1 ty2 =
@@ -121,6 +121,8 @@ exception TypeError2 of
 module FC =
   struct
     open Syntax.FC
+
+    let con ctx ty1 ty2 = precon isGradual ctx ty1 ty2
 
     let rec typeOf ctx = function
         Var(r,i) ->
@@ -197,20 +199,7 @@ module FC =
        | (_, PossiblySTVar f) -> f := false; true
        | (id, _) -> err ("isGradual: cannot happen -- " ^ id)
 
-     let rec con ctx ty1 ty2 =
-       ty1 = ty2 ||
-         match ty1, ty2 with
-           Arr(tys1, tyt1), Arr(tys2, tyt2) ->
-            con ctx tys1 tys2 && con ctx tyt1 tyt2
-         | Forall(id, ty1'), Forall(_, ty2') ->
-            con ((id,STVar)::ctx) ty1' ty2'
-         | Forall(id, ty1'), _ ->
-            containsDyn ty2 && con ((id,GTVar)::ctx) ty1' (typeShift 1 0 ty2)
-         | _, Forall(id, ty2') ->
-            containsDyn ty1 && con ((id,GTVar)::ctx) (typeShift 1 0 ty1) ty2'
-         | Dyn, _ -> forall (isGradualOrMakeItGradual ctx) (freeTVs ty2)
-         | _, Dyn -> forall (isGradualOrMakeItGradual ctx) (freeTVs ty1)
-         | _ -> false
+     let rec con ctx ty1 ty2 = precon isGradualOrMakeItGradual ctx ty1 ty2
 
      let matchingFun ctx f1 = function
          Dyn -> FC.CastExp(FC.tmRan f1, f1, Dyn, Arr(Dyn, Dyn)), Dyn, Dyn
