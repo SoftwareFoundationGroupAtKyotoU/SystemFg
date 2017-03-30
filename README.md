@@ -36,7 +36,7 @@
 
 ## Wish List
 
-* Data structures: pairs and lists
+* Data structures: pairs
 * Implement reduction (not evaluation) for assist proofs
     * pretty printer for Fg- ad Fc-terms
 
