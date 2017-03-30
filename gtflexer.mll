@@ -13,9 +13,12 @@ let reservedWords = [
   ("rec", fun r-> Gtfparser.REC r);
   ("then", fun r-> Gtfparser.THEN r);
   ("true", fun r-> Gtfparser.TRUE r);
+  ("match", fun r -> Gtfparser.MATCH r);
+  ("with", fun r -> Gtfparser.WITH r);
   ("Int", fun r-> Gtfparser.INT r);
   ("Bool", fun r-> Gtfparser.BOOL r);
   ("All", fun r-> Gtfparser.ALL r);
+  ("list", fun r-> Gtfparser.LIST r);
 ]
 
 let range lexbuf =
@@ -38,6 +41,7 @@ rule main = parse
 | "[" { Gtfparser.LBRACKET (range lexbuf)}
 | "]" { Gtfparser.RBRACKET (range lexbuf)}
 | ";;" { Gtfparser.SEMISEMI (range lexbuf)}
+| "::" { Gtfparser.COLCOL (range lexbuf)}
 | "->" { Gtfparser.RARROW (range lexbuf)}
 | "=>" { Gtfparser.DARROW (range lexbuf)}
 | ":" { Gtfparser.COLON (range lexbuf)}
@@ -46,6 +50,9 @@ rule main = parse
 | "*" { Gtfparser.AST (range lexbuf)}
 | "<" { Gtfparser.LT (range lexbuf)}
 | "=" { Gtfparser.EQ (range lexbuf)}
+| "@" { Gtfparser.AT (range lexbuf)}
+| ";" { Gtfparser.SEMI (range lexbuf)}
+| "|" { Gtfparser.BAR (range lexbuf)}
 
 | ['a'-'z'] ['A'-'Z' 'a'-'z' '0'-'9' '_' '\'']*
     { let id = Lexing.lexeme lexbuf in

@@ -39,6 +39,7 @@ let rec freeTVs i = function
   | Arr(ty1, ty2) -> merge (freeTVs i ty1) (freeTVs i ty2)
   | TyVar j -> if j >= i then [j] else []
   | Forall(_, ty0) -> shiftTVs (-1) (freeTVs (i+1) ty0)
+  | List ty0 -> freeTVs i ty0
   | Dyn -> []
 
 let freeTVs = freeTVs 0
@@ -49,13 +50,15 @@ let rec containsDyn = function
   | Arr(ty1, ty2) -> containsDyn ty1 || containsDyn ty2
   | TyVar _ -> false
   | Forall(_, ty0) -> containsDyn ty0
+  | List ty0 -> containsDyn ty0
   | Dyn -> true
 
 let rec precon isG ctx ty1 ty2 =
   ty1 = ty2 ||
     match ty1, ty2 with
       Arr(tys1, tyt1), Arr(tys2, tyt2) ->
-        precon isG ctx tys1 tys2 && precon isG ctx tyt1 tyt2
+      precon isG ctx tys1 tys2 && precon isG ctx tyt1 tyt2
+    | List ty10, List ty20 -> precon isG ctx ty10 ty20
     | Forall(id, ty1'), Forall(_, ty2') ->
        precon isG ((id,STVar)::ctx) ty1' ty2'
     | Forall(id, ty1'), _ ->
@@ -84,6 +87,10 @@ let rec join ctx ty1 ty2 =
      join ((id,GTVar)::ctx) ty1' (typeShift 1 0 ty2)
   | _, Forall(id, ty2') when containsDyn ty1 ->
      join ((id,GTVar)::ctx) (typeShift 1 0 ty1) ty2'
+  | List ty10, List ty20 ->
+     (match join ctx ty10 ty20 with
+        Some ty -> Some (List ty)
+      | None -> None)
   | _ -> if forall (isGradual ctx) (freeTVs ty1)
             && forall (isGradual ctx) (freeTVs ty2)
          then Some Dyn else None
@@ -102,6 +109,10 @@ let rec meet ctx ty1 ty2 =
   (* not sure if the following two clauses are correct *)
   | Forall(id, ty1'), _ -> meet ((id,GTVar)::ctx) (typeShift 1 0 ty1') ty2
   | _, Forall(id, ty2') -> meet ((id,GTVar)::ctx) ty1 (typeShift 1 0 ty2')
+  | List ty10, List ty20 ->
+     (match meet ctx ty10 ty20 with
+        Some ty -> Some (List ty)
+      | None -> None)
   | _, _ -> None
                               
 let typeOfBin = function
@@ -161,7 +172,7 @@ module FC =
           | Arr(ty11, ty12) when ty11 = ty2 -> ty12
           | Arr(ty11, _) ->
              raise (TypeError2 (r.frm, "app: the argument has type %a but is expected to be consistent with %a", ctx, ty2, ty11))
-          | _ -> raise (TypeError (tmPos e1, "app: the expression has type %a but is expected to have -> or *", ctx, ty1)))
+          | _ -> raise (TypeError (tmPos e1, "app: the expression has type %a but is expected to have ->", ctx, ty1)))
       | TSFunExp(r, id, e0) ->
          Forall(id, typeOf ((id,STVar)::ctx) e0)
       | TGFunExp(r, id, e0) ->
@@ -170,13 +181,28 @@ module FC =
          let ty1 = typeOf ctx e1 in
          (match ty1 with
           | Forall(id, ty11) -> typeInst ty11 ty
-          | _ -> raise (TypeError (tmPos e1, "app: the expression has type %a but is expected to have All or *", ctx, ty1)))
+          | _ -> raise (TypeError (tmPos e1, "app: the expression has type %a but is expected to have All", ctx, ty1)))
       | CastExp(r, e0, ty1, ty2) ->
          let ty0 = typeOf ctx e0 in
          if ty0 = ty1 then
            if con ctx ty1 ty2 then ty2
            else raise (TypeError2 (r.frm, "cast: the source type %a and target type %a are not consistent", ctx, ty1, ty2))
          else raise (TypeError2 (tmPos e0, "cast: the expression has type %a but is expected to have %a", ctx, ty0, ty1))
+      | NilExp(r, ty) -> List ty
+      | ConsExp(r, e1, e2) ->
+         let ty1 = typeOf ctx e1 in
+         let ty2 = typeOf ctx e2 in
+         (match ty2 with
+          | List ty0 -> if ty1 = ty0 then ty2
+                        else raise (TypeError2 (tmPos e1, "cons: the expression has type %a but is expected to have %a", ctx, ty1, ty0))
+          | _ -> raise (TypeError (tmPos e2, "cons: the expression has type %a but is expected to have list or *", ctx, ty2)))
+      | MatchExp(r, e0, e1, x, y, e2) ->
+         (match typeOf ctx e0 with
+            List ty0 -> let ty1 = typeOf ctx e1 in
+                        let ty2 = typeShift (-2) 0 (typeOf ((y, VDecl (List ty0)) :: (x, VDecl ty0) :: ctx) e2) in
+                        if ty1 = ty2 then ty1
+                        else raise (TypeError2 (r.frm, "match: types of branches %a and %a do not match", ctx, ty1, ty2))
+          | ty0 -> raise (TypeError (tmPos e0, "if: the test exp has type %a but is expected to have a list type", ctx, ty0)))
 
     let typingDecl ctx = function
         Prog e | Decl(_, e) -> typeOf ctx e
@@ -212,6 +238,11 @@ module FC =
           FC.CastExp(FC.tmRan f1, f1, Dyn, ty), Dyn
        | Forall(_,ty11) -> f1, ty11
        | ty -> raise (TypeError (FC.tmPos f1, "The expression has type %a but is expected to have All or *", ctx, ty))
+
+     let matchingList ctx f1 = function
+         Dyn -> FC.CastExp(FC.tmRan f1, f1, Dyn, List Dyn), Dyn
+       | List ty -> f1, ty
+       | ty -> raise (TypeError (FC.tmPos f1, "The expression has type %a but is expected to have list or *", ctx, ty))
 
      let putOpCast f ?(ran=FC.tmRan f) ctx src tgt =
        if src = tgt then f
@@ -286,6 +317,25 @@ module FC =
             if con ctx ty1 ty2 then FC.CastExp(r, f1, ty1, ty2), ty2
             else raise (TypeError2 (r.frm, "cast: the source type %a and target type %a are not consistent", ctx, ty1, ty2))
           else raise (TypeError2 (tmPos e0, "cast: the expression has type %a but is expected to have %a", ctx, ty1', ty1))
+      | NilExp(r, ty) -> FC.NilExp(r, ty), List ty
+      | ConsExp(r, e1, e2) ->
+         let f1, ty1 = translate ctx e1 in
+         let f2, ty2 = translate ctx e2 in
+         let f2', ty20 = matchingList ctx f2 ty2 in
+         if con ctx ty1 ty20 then
+           FC.ConsExp(r, putOpCast f1 ctx ty1 ty20, f2'), List ty20
+         else raise (TypeError2 (tmPos e1, "cons: the expression has type %a but is expected to have %a", ctx, ty1, ty20))
+      | MatchExp(r, e0, e1, x, y, e2) ->
+         let f0, ty0 = translate ctx e0 in
+         let f0', ty00 = matchingList ctx f0 ty0 in
+         let f1, ty1 = translate ctx e1 in
+         let f2, ty2 = translate ((y, VDecl (List ty00)) :: (x, VDecl ty00) :: ctx) e2 in
+         let ty2 = typeShift (-2) 0 ty2 in
+         (match meet ctx ty1 ty2 with
+            Some ty -> FC.MatchExp(r, f0',
+                                   putOpCast f1 ctx ty1 ty, x, y,
+                                   putOpCast f2 ctx ty2 ty), ty
+          | None -> raise (TypeError2 (r.frm, "match: types of branches %a and %a do not match", ctx, ty1, ty2)))
 
      let translateDecl ctx = function
          Prog e ->

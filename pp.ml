@@ -13,8 +13,9 @@ let with_paren gt ppf_e e_up ppf e =
 let (<) t t_up = match t, t_up with
     (* -> is right associative;
        forall extends to the right as far as possible
+       T list is left associative and binds tighter than ->:
     *)
-  | (Arr(_,_) | Forall(_,_)),  Arr(_,_) -> true
+  | (Arr(_,_) | Forall(_,_)), (Arr(_,_) | List _) -> true
   | _ -> false
 
 (* if t is the right operand of t_up, do you need parentheses for t? *)
@@ -33,6 +34,8 @@ let rec print_type ctx ppf t =
             (with_paren_R (print_type ctx) t) t2
       | Forall(id, t0) ->
          pr ppf "All %s%a" id (print_forall ((id,STVar)::ctx)) t0
+      | List t0 ->
+         pr ppf "%a list" (with_paren_L (print_type ctx) t) t0
       | TyVar i -> pp_print_string ppf (fst (List.nth ctx i))
 and print_forall ctx ppf t =
   match t with
@@ -48,5 +51,12 @@ let rec print_val ppf = function
   | Tagged(I, v, _) -> pr ppf "%a : Int => *" print_val v
   | Tagged(B, v, _) -> pr ppf "%a : Bool => *" print_val v
   | Tagged(Ar, v, _) -> pr ppf "%a : *->* => *" print_val v
+  | Tagged(L, v, _) -> pr ppf "%a : * list => *" print_val v
   | Tagged(TV (_,name), v, _) -> pr ppf "%a : %s => *" print_val v name
+  | NilV | ConsV(_,_) as lst -> pr ppf "[%a]" print_lst lst
+and print_lst ppf = function
+    NilV -> ()
+  | ConsV(v1, NilV) -> pr ppf "%a" print_val v1
+  | ConsV(v1, v2) -> pr ppf "%a; %a" print_val v1 print_lst v2
+  | v -> raise (ImplBugV (Lexing.dummy_pos, "print_lst: nonlist value", v))
     (* TODO: recover the tyvar name *)

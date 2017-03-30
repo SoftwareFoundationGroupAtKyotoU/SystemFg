@@ -2,13 +2,15 @@ open Support.Error
 open Syntax
 open FC
 
-type tag = I | B | Ar | TV of unit ref * id (* aka ground types *)
+type tag = I | B | Ar | L | TV of unit ref * id (* aka ground types *)
 
 type value =
   IntV of int
 | BoolV of bool
 | Fun of (value -> value)
 | TFun of (unit -> value)
+| NilV
+| ConsV of value * value
 | Tagged of tag * value * range
 and env =
   Empty
@@ -137,10 +139,24 @@ let rec eval = function
      let v = eval e in
      let cast = (ty1 ==> ty2) r Pos in
      fun env -> cast env (v env)
+  | NilExp (r, ty) -> fun env -> NilV
+  | ConsExp (r, e1, e2) ->
+     let v1 = eval e1 in
+     let v2 = eval e2 in
+     fun env -> ConsV(v1 env, v2 env)
+  | MatchExp (r, e0, e1, _, _, e2) ->
+     let v0 = eval e0 in
+     let v1 = eval e1 in
+     let v2 = eval e2 in
+     (fun env -> match v0 env with
+                   NilV -> v1 env
+                 | ConsV(v21, v22) -> v2 (VB (v22, VB(v21, env)))
+                 | v -> raise (ImplBugV (r.frm, "match on non-list", v)))
 and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
     Int, Int -> fun env v -> v
   | Bool, Bool -> fun env v -> v
   | Arr(Dyn,Dyn), Arr(Dyn,Dyn) -> fun env v -> v
+  | List Dyn, List Dyn -> fun env v -> v
   | TyVar id1, TyVar id2 ->
      if id1 = id2 then fun env v -> v
      else raise (ImplBug (r.frm, ("incompatible types "^string_of_int id1^" and "^ string_of_int id2)))
@@ -148,6 +164,7 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
   | Int, Dyn -> fun env v -> Tagged (I, v, r)
   | Bool, Dyn -> fun env v -> Tagged (B, v, r)
   | Arr(Dyn,Dyn), Dyn -> fun env v -> Tagged (Ar, v, r)
+  | List Dyn, Dyn -> fun env v -> Tagged (L, v, r)
   | TyVar idx, Dyn -> fun env v -> let (key,name) = lookupty r.frm idx env in Tagged (TV (key,name), v, r)
   | Dyn, Int ->
      fun env v -> (match v with
@@ -164,6 +181,11 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
                    | Tagged(Ar, v0, _) -> v0
                    | Tagged(_, _, _) -> raise (Blame (r, plr, v, "*->*"))
                    | _ -> raise (ImplBugV (r.frm, "untagged value", v)))
+  | Dyn, List Dyn ->
+     fun env v -> (match v with
+                   | Tagged(L, v0, _) -> v0
+                   | Tagged(_, _, _) -> raise (Blame (r, plr, v, "* list"))
+                   | _ -> raise (ImplBugV (r.frm, "untagged value", v)))
   | Dyn, TyVar id ->
      fun env v -> (match v with
                    | Tagged(TV (key1,name), v0, _) ->
@@ -179,6 +201,13 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
         Fun f -> Fun (fun w -> let arg = argcast env w in
                                  rescast env (f arg))
       | v -> raise (ImplBugV (r.frm, "nonprocedural value", v)))
+  | List s0, List t0 ->
+     let elmcast = (s0 ==> t0) r plr in
+     (let rec loop env = function
+         NilV -> NilV
+       | ConsV(v1, v2) -> ConsV(elmcast env v1, loop env v2)
+       | v -> raise (ImplBugV (r.frm, "nonlist value", v))
+      in loop)
   | Forall(id1, t1), Forall(id2, t2) ->
      let bodycast = (t1 ==> t2) r plr in
      (fun env -> function
@@ -198,4 +227,10 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
   | Dyn, (Arr(s, t) as ty) ->
      let cast = (Arr(Dyn,Dyn) ==> ty) r plr in
      fun env v -> cast env (Tagged (Ar, v, r))
+  | List s0, Dyn ->
+     let cast = (t1 ==> List Dyn) r plr in
+     fun env v -> Tagged(L, cast env v, r)
+  | Dyn, List t0 ->
+     let cast = (List Dyn ==> t2) r plr in
+     fun env v -> cast env (Tagged (L, v, r))
   | _, _ -> raise (ImplBug (r.frm, "non-compatible types encountered in (==>)"))

@@ -8,6 +8,7 @@ type ty =
 | Arr of ty * ty
 | TyVar of int
 | Forall of id * ty
+| List of ty
 | Dyn
 
 type binding =
@@ -36,6 +37,7 @@ let rec typeShift d i = function  (* shift by d if >= i *)
   | Arr(t1, t2) -> Arr(typeShift d i t1, typeShift d i t2)
   | TyVar j -> if j >= i then TyVar (j+d) else TyVar j
   | Forall(id, ty) -> Forall(id, typeShift d (i+1) ty)
+  | List ty0 -> List(typeShift d i ty0)
   | Dyn -> Dyn
 
 let rec typeSubst i ty = function
@@ -44,6 +46,7 @@ let rec typeSubst i ty = function
   | Arr(ty1, ty2) -> Arr(typeSubst i ty ty1, typeSubst i ty ty2)
   | TyVar j -> if i = j then typeShift i 0 ty else TyVar j
   | Forall(id, ty0) -> Forall(id, typeSubst (i+1) ty ty0)
+  | List ty0 -> List(typeSubst i ty ty0)
   | Dyn -> Dyn
 
 let typeInst ty ty' = (* ty must be a body of Forall *)
@@ -68,6 +71,9 @@ module FG =
     | LetExp of range * id * term * term
     | AscExp of range * term * ty (* type ascription *)
     | CastExp of range * term * ty * ty
+    | NilExp of range * ty
+    | ConsExp of range * term * term
+    | MatchExp of range * term * term * id * id * term
 
     type program =
       Prog of term
@@ -77,7 +83,8 @@ module FG =
         (Var(r, _) | IConst(r, _) | BConst(r, _) | BinOp(r, _, _, _)
          | IfExp(r, _, _, _) | FunExp(r, _, _, _) | FixExp(r, _, _, _, _, _)
          | AppExp(r, _, _) | TFunExp(r, _, _) | TAppExp(r, _, _)
-         | LetExp(r, _, _, _) | AscExp(r, _, _) | CastExp(r, _, _, _))
+         | LetExp(r, _, _, _) | AscExp(r, _, _) | CastExp(r, _, _, _)
+         | NilExp(r, _) | ConsExp(r,_,_) | MatchExp(r,_,_,_,_,_))
         -> r
 
     let tmPos t = (tmRan t).frm
@@ -102,6 +109,9 @@ module FC =
     | TGFunExp of range * id * term
     | TAppExp of range * term * ty
     | CastExp of range * term * ty * ty
+    | NilExp of range * ty
+    | ConsExp of range * term * term
+    | MatchExp of range * term * term * id * id * term
 
     type program =
       Prog of term
@@ -111,7 +121,8 @@ module FC =
         (Var(r, _) | IConst(r, _) | BConst(r, _) | BinOp(r, _, _, _)
          | IfExp(r, _, _, _) | FunExp(r, _, _, _) | FixExp(r, _, _, _, _, _)
          | AppExp(r, _, _) | TSFunExp(r, _, _) | TGFunExp(r, _, _)
-         | TAppExp(r, _, _) | CastExp(r, _, _, _))
+         | TAppExp(r, _, _) | CastExp(r, _, _, _)
+         | NilExp(r,_) | ConsExp(r,_,_) | MatchExp(r,_,_,_,_,_))
         -> r
 
     let tmPos t = (tmRan t).frm
