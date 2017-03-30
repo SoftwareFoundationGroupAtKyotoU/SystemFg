@@ -57,3 +57,28 @@ sum 10;;
 
 let sum2 = let rec f (x:Int) : Int = if x < 1 then 0 else x + f (x + (-1)) in f;;
 sum2 10;;
+
+// lists
+let xs = [1; 2; 3; @Int];; // statically typed list
+let ys = [4; true];;  // dynamically typed list
+
+let rec length (as: Int list) : Int =
+  match as with
+    [] -> 0
+  | a :: bs -> 1 + length bs;;
+
+length xs;;
+  
+let rec append (as:Int list) (bs:Int list) : Int list =
+  match as with
+    [] -> bs
+  | a :: cs -> a :: append cs bs;;
+
+let zs = append xs xs;;
+
+let rec dynappend (as:*) (bs:*) : * =
+  match as with
+    [] -> bs
+  | a :: cs -> a :: dynappend cs bs;;
+
+let ws = dynappend xs ys;;
