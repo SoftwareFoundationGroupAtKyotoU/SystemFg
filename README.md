@@ -21,6 +21,10 @@
     * The return type annotation `: T` is mandatory.
 * Ascription: `(e : T)` (parentheses always required)
 * Cast: `(e : S => T)` (parentheses always required)
+* Lists: `[@T]` (empty list of `T list`), `e::e`
+    * Omitting `@T` makes `* list`
+    * `[e; ...; e; @T]` (where "`; @T`" can be omitted) is supported
+* Case analysis on lists: `match e with [] -> e | x :: y -> e`
 * Top-level input: `e;;`, `let x : T = e;;`, `let f (x:T1) : T = e`, or `let rec f (x:T1) : T = e;;`.
     * Type annotation `:T` is optional in non-recursive definitions.
 * A list of parameters allowed for `let` (`let rec`) and `fun`, as in `fun X (x:X) -> x` or `let id X (x:X) : X = x;;`
