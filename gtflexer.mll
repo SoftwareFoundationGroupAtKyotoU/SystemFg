@@ -15,9 +15,13 @@ let reservedWords = [
   ("true", fun r-> Gtfparser.TRUE r);
   ("match", fun r -> Gtfparser.MATCH r);
   ("with", fun r -> Gtfparser.WITH r);
+  (* deprecated *)
   ("Int", fun r-> Gtfparser.INT r);
   ("Bool", fun r-> Gtfparser.BOOL r);
+  (* end deprecated *)
   ("All", fun r-> Gtfparser.ALL r);
+  ("int", fun r-> Gtfparser.INT r);
+  ("bool", fun r-> Gtfparser.BOOL r);
   ("list", fun r-> Gtfparser.LIST r);
 ]
 
