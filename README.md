@@ -10,7 +10,7 @@
 
 * Uppercase IDs for type variables.
 * Lowercase IDs for term variables.
-* Types: `Int`, `Bool`, `*` (for type dynamic), `S->T`, `All X.T`.
+* Types: `int`, `bool`, `*` (for type dynamic), `S->T`, `All X.T`.
     * Nested `All` can be abbreviated, e.g., `All X Y.T` for `All X. All Y. T`.
 * Constants: integers, `true`, `false`
 * Usual constructs such as: `let x = e1 in e2`, `if e1 then e2 else e3`, `+`, `*`, `<`

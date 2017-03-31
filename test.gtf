@@ -3,42 +3,42 @@ let dsucc (x:*) : * = x + 1;;
 dsucc 4;;
 dsucc true;;
 
-let ssucc (x:Int) = x + 1;;
+let ssucc (x:int) = x + 1;;
 ssucc 4;;
 ssucc true;;
 
-let ssucc2 : Int -> Int = dsucc;;
+let ssucc2 : int -> int = dsucc;;
 ssucc2 4;;
 ssucc2 true;;
 
-let neg(b:Bool) = if b then false else true;;
+let neg(b:bool) = if b then false else true;;
 
 let dtwice (f:*->*) (x:*) = f (f x);;
 dtwice ssucc 5;;
 dtwice neg true;;
 
-let twice_int (f:Int->Int) (x:Int) = f (f x);;
-let twice_bool (f:Bool->Bool) (x:Bool) = f (f x);;
+let twice_int (f:int->int) (x:int) = f (f x);;
+let twice_bool (f:bool->bool) (x:bool) = f (f x);;
 
 let funny_twice (f:*->*) (x:*) = f ((f x) + 2);;
 funny_twice ssucc 5;;
 funny_twice neg true;;
 
-let twice_int2 : (Int->Int)->Int->Int = funny_twice;;
+let twice_int2 : (int->int)->int->int = funny_twice;;
 twice_int2 ssucc 5;;
 
 // polymorphism
 let poly_twice X (f: X->X) (x:X) = f(f x);;
-poly_twice [Int] ssucc 5;;
-poly_twice [Bool] neg true;;
+poly_twice [int] ssucc 5;;
+poly_twice [bool] neg true;;
 
 let twice : All X.(X->X)->(X->X) = dtwice;;
-twice [Int] ssucc 5;;
-twice [Bool] neg true;;
+twice [int] ssucc 5;;
+twice [bool] neg true;;
 
 let wrong_twice : All A.(A->A)->(A->A) = funny_twice;;
-wrong_twice [Bool] neg true;;
-wrong_twice [Int] ssucc 5;;
+wrong_twice [bool] neg true;;
+wrong_twice [int] ssucc 5;;
 
 
 // K combinator, gradually
@@ -49,27 +49,27 @@ let gradk : All X.X -> * -> X = dynk;;
 
 let polyk : All X Y. X->Y->X = gradk;;
 
-polyk [Int] [Bool] 4 true;;
+polyk [int] [bool] 4 true;;
 
 // Recursion
-let rec sum (x:Int) : Int = if x < 1 then 0 else x + sum (x + (-1));;
+let rec sum (x:int) : int = if x < 1 then 0 else x + sum (x + (-1));;
 sum 10;;
 
-let sum2 = let rec f (x:Int) : Int = if x < 1 then 0 else x + f (x + (-1)) in f;;
+let sum2 = let rec f (x:int) : int = if x < 1 then 0 else x + f (x + (-1)) in f;;
 sum2 10;;
 
 // lists
-let xs = [1; 2; 3; @Int];; // statically typed list
+let xs = [1; 2; 3; @int];; // statically typed list
 let ys = [4; true];;  // dynamically typed list
 
-let rec length (as: Int list) : Int =
+let rec length (as: int list) : int =
   match as with
     [] -> 0
   | a :: bs -> 1 + length bs;;
 
 length xs;;
   
-let rec append (as:Int list) (bs:Int list) : Int list =
+let rec append (as:int list) (bs:int list) : int list =
   match as with
     [] -> bs
   | a :: cs -> a :: append cs bs;;
