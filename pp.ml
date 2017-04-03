@@ -27,7 +27,7 @@ let rec print_type ctx ppf t =
     match t with
         Int -> pp_print_string ppf "Int"
       | Bool -> pp_print_string ppf "Bool"
-      | Dyn -> pp_print_string ppf "*"
+      | Dyn -> pp_print_string ppf "?"
       | Arr(t1, t2) -> 
          pr ppf "%a -> %a"
             (with_paren_L (print_type ctx) t) t1
@@ -48,11 +48,11 @@ let rec print_val ppf = function
   | BoolV false -> pp_print_string ppf "false"
   | Fun _ -> pp_print_string ppf "<fun>"
   | TFun _ -> pp_print_string ppf "<tfun>"
-  | Tagged(I, v, _) -> pr ppf "%a : Int => *" print_val v
-  | Tagged(B, v, _) -> pr ppf "%a : Bool => *" print_val v
-  | Tagged(Ar, v, _) -> pr ppf "%a : *->* => *" print_val v
-  | Tagged(L, v, _) -> pr ppf "%a : * list => *" print_val v
-  | Tagged(TV (_,name), v, _) -> pr ppf "%a : %s => *" print_val v name
+  | Tagged(I, v, _) -> pr ppf "%a : Int => ?" print_val v
+  | Tagged(B, v, _) -> pr ppf "%a : Bool => ?" print_val v
+  | Tagged(Ar, v, _) -> pr ppf "%a : ?->? => ?" print_val v
+  | Tagged(L, v, _) -> pr ppf "%a : ? list => ?" print_val v
+  | Tagged(TV (_,name), v, _) -> pr ppf "%a : %s => ?" print_val v name
   | NilV | ConsV(_,_) as lst -> pr ppf "[%a]" print_lst lst
 and print_lst ppf = function
     NilV -> ()

@@ -10,7 +10,7 @@
 
 * Uppercase IDs for type variables.
 * Lowercase IDs for term variables.
-* Types: `int`, `bool`, `*` (for type dynamic), `S->T`, `All X.T`.
+* Types: `int`, `bool`, `?` (for type dynamic), `S->T`, `All X.T`.
     * Nested `All` can be abbreviated, e.g., `All X Y.T` for `All X. All Y. T`.
 * Constants: integers, `true`, `false`
 * Usual constructs such as: `let x = e1 in e2`, `if e1 then e2 else e3`, `+`, `*`, `<`
@@ -22,7 +22,7 @@
 * Ascription: `(e : T)` (parentheses always required)
 * Cast: `(e : S => T)` (parentheses always required)
 * Lists: `[@T]` (empty list of `T list`), `e::e`
-    * Omitting `@T` makes `* list`
+    * Omitting `@T` makes `? list`
     * `[e; ...; e; @T]` (where "`; @T`" can be omitted) is supported
 * Case analysis on lists: `match e with [] -> e | x :: y -> e`
 * Top-level input: `e;;`, `let x : T = e;;`, `let f (x:T1) : T = e`, or `let rec f (x:T1) : T = e;;`.
