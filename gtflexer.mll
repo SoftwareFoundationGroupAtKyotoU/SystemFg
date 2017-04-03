@@ -52,6 +52,7 @@ rule main = parse
 | "." { Gtfparser.DOT (range lexbuf)}
 | "+" { Gtfparser.PLUS (range lexbuf)}
 | "*" { Gtfparser.AST (range lexbuf)}
+| "?" { Gtfparser.QM (range lexbuf)}
 | "<" { Gtfparser.LT (range lexbuf)}
 | "=" { Gtfparser.EQ (range lexbuf)}
 | "@" { Gtfparser.AT (range lexbuf)}

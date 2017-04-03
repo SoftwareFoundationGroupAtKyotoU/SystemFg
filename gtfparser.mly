@@ -6,7 +6,7 @@ open FG
 
 %token <Support.Error.range> LPAREN RPAREN LBRACKET RBRACKET SEMISEMI COLCOL
 %token <Support.Error.range> RARROW DARROW COLON DOT AT SEMI BAR
-%token <Support.Error.range> PLUS AST LT EQ
+%token <Support.Error.range> PLUS AST QM LT EQ
 %token <Support.Error.range> IF THEN ELSE TRUE FALSE LET IN FUN REC MATCH WITH INT BOOL ALL LIST
 
 %token <int Support.Error.with_ran> INTV
@@ -217,7 +217,7 @@ lstType :
 aType :
     INT { fun ctx -> Int }
   | BOOL { fun ctx -> Bool }
-  | AST { fun ctx -> Dyn }
+  | QM { fun ctx -> Dyn }
   | id=UCID { fun ctx -> TyVar (name2index ctx id) }
   | id=PRIMEUCID { fun ctx -> TyVar (name2index ctx id) }
   | LPAREN ty=ty RPAREN { ty }

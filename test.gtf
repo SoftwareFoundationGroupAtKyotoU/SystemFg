@@ -1,5 +1,5 @@
 // gradual typing
-let dsucc (x:*) : * = x + 1;;
+let dsucc (x:?) : ? = x + 1;;
 dsucc 4;;
 dsucc true;;
 
@@ -13,14 +13,14 @@ ssucc2 true;;
 
 let neg(b:bool) = if b then false else true;;
 
-let dtwice (f:*->*) (x:*) = f (f x);;
+let dtwice (f:?->?) (x:?) = f (f x);;
 dtwice ssucc 5;;
 dtwice neg true;;
 
 let twice_int (f:int->int) (x:int) = f (f x);;
 let twice_bool (f:bool->bool) (x:bool) = f (f x);;
 
-let funny_twice (f:*->*) (x:*) = f ((f x) + 2);;
+let funny_twice (f:?->?) (x:?) = f ((f x) + 2);;
 funny_twice ssucc 5;;
 funny_twice neg true;;
 
@@ -43,9 +43,9 @@ wrong_twice [int] ssucc 5;;
 
 // K combinator, gradually
 
-let dynk (x:*) (y:*) = x;;
+let dynk (x:?) (y:?) = x;;
 
-let gradk : All X.X -> * -> X = dynk;;
+let gradk : All X.X -> ? -> X = dynk;;
 
 let polyk : All X Y. X->Y->X = gradk;;
 
@@ -76,7 +76,7 @@ let rec append (as:int list) (bs:int list) : int list =
 
 let zs = append xs xs;;
 
-let rec dynappend (as:*) (bs:*) : * =
+let rec dynappend (as:?) (bs:?) : ? =
   match as with
     [] -> bs
   | a :: cs -> a :: dynappend cs bs;;
