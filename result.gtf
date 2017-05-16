@@ -1,0 +1,54 @@
+# dsucc : * -> * = <fun>
+# - : * = 5 : Int => *
+# 
+line 2, character 22 -- line 2, character 23
+Blame on the expression side: true : Bool => * => Int
+Value source: line 4, character 6 -- line 4, character 10
+# ssucc : Int -> Int = <fun>
+# - : Int = 5
+# 
+line 8, character 0
+app: the argument has type Bool but is expected to be consistent with Int
+# ssucc2 : Int -> Int = <fun>
+# - : Int = 5
+# 
+line 12, character 0
+app: the argument has type Bool but is expected to be consistent with Int
+# neg : Bool -> Bool = <fun>
+# dtwice : (* -> *) -> * -> * = <fun>
+# - : * = 7 : Int => *
+# - : * = true : Bool => *
+# twice_int : (Int -> Int) -> Int -> Int = <fun>
+# twice_bool : (Bool -> Bool) -> Bool -> Bool = <fun>
+# funny_twice : (* -> *) -> * -> * = <fun>
+# - : * = 9 : Int => *
+# 
+line 23, character 37 -- line 23, character 40
+Blame on the expression side: false : Bool => * => Int
+Value source: line 25, character 12 -- line 25, character 15
+# twice_int2 : (Int -> Int) -> Int -> Int = <fun>
+# - : Int = 9
+# poly_twice : All X. (X -> X) -> X -> X = <tfun>
+# - : Int = 7
+# - : Bool = true
+# twice : All X. (X -> X) -> X -> X = <tfun>
+# - : Int = 7
+# - : Bool = true
+# wrong_twice : All A. (A -> A) -> A -> A = <tfun>
+# 
+line 23, character 37 -- line 23, character 40
+Blame on the expression side: false : A => * => Int
+Value source: line 39, character 41 -- line 39, character 52
+# 
+line 23, character 37 -- line 23, character 40
+Blame on the expression side: 6 : A => * => Int
+Value source: line 39, character 41 -- line 39, character 52
+# dynk : * -> * -> * = <fun>
+# gradk : All X. X -> * -> X = <tfun>
+# polyk : All X Y. X -> Y -> X = <tfun>
+# - : Int = 4
+# sum : Int -> Int = <fun>
+# - : Int = 55
+# sum2 : Int -> Int = <fun>
+# - : Int = 55
+# 

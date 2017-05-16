@@ -1,0 +1,26 @@
+# id : * -> * = <fun>
+# polyid : All X. X -> X = <tfun>
+# - : Int = 2
+# dynsucc : * -> * = <fun>
+# - : * = 5 : Int => *
+# wrongpolyid : All X. X -> X = <tfun>
+# 
+line 7, character 39 -- line 7, character 53
+Blame on the expression side: 4 : X => * => Int
+Value source: line 11, character 31 -- line 11, character 61
+# id2 : All X. X -> X = <tfun>
+# castid : * -> * = <fun>
+# - : * = 3 : Int => *
+# - : All X. X -> * = <tfun>
+# f : All X. X -> * = <tfun>
+# - : All X Y. X -> Y -> X = <tfun>
+# k : All X Y. X -> Y -> X = <tfun>
+# 
+line 29, character 0 -- line 29, character 28
+Blame on the expression side: 1 : Int => * => Bool
+Value source: line 29, character 1 -- line 29, character 15
+# 
+line 31, character 20 -- line 31, character 43
+Blame on the expression side: 1 : X => * => Y
+Value source: line 31, character 21 -- line 31, character 33
+# 
