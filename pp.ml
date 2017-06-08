@@ -25,8 +25,8 @@ let rec print_type ctx ppf t =
   let with_paren_L = with_paren (fun e_up e -> e < e_up) 
   and with_paren_R = with_paren (>) in
     match t with
-        Int -> pp_print_string ppf "Int"
-      | Bool -> pp_print_string ppf "Bool"
+        Int -> pp_print_string ppf "int"
+      | Bool -> pp_print_string ppf "bool"
       | Dyn -> pp_print_string ppf "?"
       | Arr(t1, t2) -> 
          pr ppf "%a -> %a"
