@@ -82,3 +82,16 @@ let rec dynappend (as:?) (bs:?) : ? =
   | a :: cs -> a :: dynappend cs bs;;
 
 let ws = dynappend xs ys;;
+
+// polymorphic lists
+let rec append X (as:X list) (bs:X list) : X list =
+  match as with
+    [] -> bs
+  | a :: cs -> a :: append cs bs;;
+
+let rec length X (as: X list) : int =
+  match as with
+    [] -> 0
+  | a :: bs -> 1 + length bs;;
+
+append [int] xs xs
