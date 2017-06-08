@@ -60,3 +60,61 @@ and print_lst ppf = function
   | ConsV(v1, v2) -> pr ppf "%a; %a" print_val v1 print_lst v2
   | v -> raise (ImplBugV (Lexing.dummy_pos, "print_lst: nonlist value", v))
     (* TODO: recover the tyvar name *)
+
+let rec print_rawtype ppf t = 
+  let with_paren_L = with_paren (fun e_up e -> e < e_up) 
+  and with_paren_R = with_paren (>) in
+    match t with
+        Int -> pp_print_string ppf "int"
+      | Bool -> pp_print_string ppf "bool"
+      | Dyn -> pp_print_string ppf "?"
+      | Arr(t1, t2) -> 
+         pr ppf "%a -> %a"
+            (with_paren_L print_rawtype t) t1
+            (with_paren_R print_rawtype t) t2
+      | Forall(id, t0) ->
+         pr ppf "All %s%a" id print_rawforall t0
+      | List t0 ->
+         pr ppf "%a list" (with_paren_L print_rawtype t) t0
+      | TyVar i -> pr ppf "#%d" i
+and print_rawforall ppf t =
+  match t with
+    Forall(id, t0) -> pr ppf " %s%a" id print_rawforall t0
+  | _ -> pr ppf ". %a" print_rawtype t
+
+let rec print_rawterm ppf =
+  let open Syntax.FG in
+  function
+    Var (_, i) -> pr ppf "#%d" i
+  | IConst (_, i) ->  pr ppf "%d" i
+  | BConst (_, true) -> pp_print_string ppf "true"
+  | BConst (_, false) -> pp_print_string ppf "false"
+  | BinOp (_, op, t1, t2) -> pr ppf "(%a op %a)" print_rawterm t1 print_rawterm t2
+  | IfExp (_, t1, t2, t3) ->
+     pr ppf "if %a then %a else %a" print_rawterm t1 print_rawterm t2 print_rawterm t3
+  | FunExp (_, id, ty, t0) ->
+     pr ppf "fun (%s : %a) -> %a" id print_rawtype ty print_rawterm t0
+  | FixExp (_, id1, id2, ty1, ty2, t0) ->
+     pr ppf "fix %s(%s : %a) : %a = %a" id1 id2 print_rawtype ty1 print_rawtype ty2 print_rawterm t0
+  | AppExp (_, t1, t2) ->
+     pr ppf "(%a) (%a)" print_rawterm t1 print_rawterm t2
+  | TFunExp (_, id, t0) ->
+     pr ppf "fun %s -> %a" id print_rawterm t0
+  | TAppExp (_, t0, ty) ->
+     pr ppf "%a [%a]" print_rawterm t0 print_rawtype ty
+  | LetExp (_, id, t1, t2) ->
+     pr ppf "let %s = %a in %a" id print_rawterm t1 print_rawterm t2
+  | AscExp (_, t0, ty) ->
+     pr ppf "(%a : %a)" print_rawterm t0 print_rawtype ty
+  | CastExp (_, t0, ty1, ty2) ->
+     pr ppf "(%a : %a => %a)" print_rawterm t0 print_rawtype ty1 print_rawtype ty2
+  | NilExp (_, ty) -> pr ppf "[@%a]" print_rawtype ty
+  | ConsExp (_, t1, t2) -> pr ppf "(%a) :: (%a)" print_rawterm t1 print_rawterm t2
+  | MatchExp (_, t1, t2, id1, id2, t3) ->
+     pr ppf "match %a with [] -> %a | %s::%s -> %a" print_rawterm t1 print_rawterm t2 id1 id2 print_rawterm t3
+    
+let print_rawdecl ppf = function
+    Syntax.FG.Prog t -> print_rawterm ppf t
+  | Syntax.FG.Decl (id, t) -> pr ppf "let %s = %a" id print_rawterm t
+
+let print_ctx ctx = List.iter (fun (id,_) -> print_string id; print_string ", ") ctx
