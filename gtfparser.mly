@@ -30,7 +30,7 @@ toplevel :
                   plist=letParamList COLON ty3=ty EQ e=expr SEMISEMI { fun ctx ->
       let tplist, id1, id2, ty2 = lrp in
       let ctx' = List.fold_left (fun ctx id -> (id.v, Dummy)::ctx) ctx tplist in
-      let t2, codtyop = plist ((id2.v, Dummy)::(id1.v, Dummy)::ctx) e (Some ty3) in
+      let t2, codtyop = plist ((id2.v, Dummy)::(id1.v, Dummy)::ctx') e (Some ty3) in
       match codtyop with
           Some codty ->
           let f = FixExp(join_range start (tmRan t2),id1.v,id2.v,ty2 ctx',typeShift (-2) 0 codty,t2) in

@@ -75,6 +75,7 @@ let rec join ctx ty1 ty2 =
   | _, Dyn -> if forall (isGradual ctx) (freeTVs ty1) then Some Dyn else None
   | Int, Int -> Some Int
   | Bool, Bool -> Some Bool
+  | TyVar i, TyVar j -> if i = j then Some (TyVar i) else None
   | Arr(tys1, tyt1), Arr(tys2, tyt2) ->
      (match join ctx tys1 tys2, join ctx tyt1 tyt2 with
         Some tys, Some tyt -> Some (Arr(tys, tyt))
@@ -101,6 +102,7 @@ let rec meet ctx ty1 ty2 =
   | _, Dyn -> if forall (isGradual ctx) (freeTVs ty1) then Some ty1 else None
   | Int, Int -> Some Int
   | Bool, Bool -> Some Bool
+  | TyVar i, TyVar j -> if i = j then Some (TyVar i) else None
   | Arr(tys1, tyt1), Arr(tys2, tyt2) ->
      (match meet ctx tys1 tys2, meet ctx tyt1 tyt2 with
         Some tys, Some tyt -> Some (Arr(tys, tyt))
@@ -200,7 +202,7 @@ module FC =
       | MatchExp(r, e0, e1, x, y, e2) ->
          (match typeOf ctx e0 with
             List ty0 -> let ty1 = typeOf ctx e1 in
-                        let ty2 = typeShift (-2) 0 (typeOf ((y, VDecl (List ty0)) :: (x, VDecl ty0) :: ctx) e2) in
+                        let ty2 = typeShift (-2) 0 (typeOf ((y, VDecl (List (typeShift 1 0 ty0))) :: (x, VDecl ty0) :: ctx) e2) in
                         if ty1 = ty2 then ty1
                         else raise (TypeError2 (r.frm, "match: types of branches %a and %a do not match", ctx, ty1, ty2))
           | ty0 -> raise (TypeError (tmPos e0, "if: the test exp has type %a but is expected to have a list type", ctx, ty0)))
@@ -331,7 +333,8 @@ module FC =
          let f0, ty0 = translate ctx e0 in
          let f0', ty00 = matchingList ctx f0 ty0 in
          let f1, ty1 = translate ctx e1 in
-         let f2, ty2 = translate ((y, VDecl (List ty00)) :: (x, VDecl ty00) :: ctx) e2 in
+         let f2, ty2 = translate ((y, VDecl (List (typeShift 1 0 ty00)))
+                                  :: (x, VDecl ty00) :: ctx) e2 in
          let ty2 = typeShift (-2) 0 ty2 in
          (match meet ctx ty1 ty2 with
             Some ty -> FC.MatchExp(r, f0',
