@@ -188,7 +188,7 @@ letParamList :
        let t, tyop' = rest ((id.v, Dummy (* VDecl paramty *))::ctx) t tyop in
        FunExp(join_range start (tmRan t), id.v, paramty, t),
        match tyop' with
-          Some ty' -> Some (Arr(paramty,ty'))
+          Some ty' -> Some (Arr(paramty, typeShift (-1) 0 ty'))
         | None -> None
     }
   | id=UCID rest=letParamList { fun ctx t tyop ->
