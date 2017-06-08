@@ -161,8 +161,9 @@ module FC =
          Arr(ty, typeShift (-1) 0 tybody)
       | FixExp(r, id1, id2, ty1, ty2, e0) ->
          let tyfun = Arr(ty1, ty2) in
+         let ty1' = typeShift 1 0 ty1 in
          let tybody = typeShift (-2) 0  (* there are two bound variables *)
-                                (typeOf ((id2, VDecl ty1)::(id1, VDecl tyfun)::ctx) e0) in
+                                (typeOf ((id2, VDecl ty1')::(id1, VDecl tyfun)::ctx) e0) in
          if tybody = ty2 then tyfun
          else raise (TypeError2 (r.frm, "fix: the body has type %a but is expected to have type %a", ctx, tybody, ty2))
       | AppExp(r, e1, e2) ->
@@ -282,7 +283,8 @@ module FC =
           FC.FunExp(r, id, ty, f0), Arr(ty, typeShift (-1) 0 tybody)
        | FixExp(r, id1, id2, ty1, ty2, e0) ->
           let tyfun = Arr(ty1, ty2) in
-          let f0, tybody = translate ((id2, VDecl ty1)::(id1, VDecl tyfun)::ctx) e0 in
+          let ty1' = typeShift 1 0 ty1 in
+          let f0, tybody = translate ((id2, VDecl ty1')::(id1, VDecl tyfun)::ctx) e0 in
           let tybody = typeShift (-2) 0 tybody in  (* there are two bound variables *)
           if tybody = ty2 then FC.FixExp(r, id1, id2, ty1, ty2, f0), tyfun (* tybody = ty2 ?? *)
           else raise (TypeError2 (r.frm, "fix: the body has type %a but is expected to have type %a", ctx, tybody, ty2))
