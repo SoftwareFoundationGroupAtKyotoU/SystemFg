@@ -94,4 +94,8 @@ let rec length X (as: X list) : int =
     [] -> 0
   | a :: bs -> 1 + length bs;;
 
-append [int] xs xs
+append [int] xs xs;;
+
+let dints = (append : ? -> ? -> ?) xs xs;;
+
+(dints : int list);;

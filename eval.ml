@@ -224,13 +224,15 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
   | Arr(s1,t1) as ty, Dyn ->
      let cast = (ty ==> Arr(Dyn, Dyn)) r plr in
      fun env v -> Tagged (Ar, cast env v, r)
-  | Dyn, (Arr(s, t) as ty) ->
-     let cast = (Arr(Dyn,Dyn) ==> ty) r plr in
-     fun env v -> cast env (Tagged (Ar, v, r))
+  | Dyn, Arr(s, t) -> 
+     let cast1 = (Arr(Dyn,Dyn) ==> t2) r plr in
+     let cast2 = (Dyn ==> Arr(Dyn,Dyn)) r plr in
+     fun env v -> cast1 env (cast2 env v)
   | List s0, Dyn ->
      let cast = (t1 ==> List Dyn) r plr in
      fun env v -> Tagged(L, cast env v, r)
   | Dyn, List t0 ->
-     let cast = (List Dyn ==> t2) r plr in
-     fun env v -> cast env (Tagged (L, v, r))
+     let cast1 = (List Dyn ==> t2) r plr in
+     let cast2 = (Dyn ==> List Dyn) r plr in
+     fun env v -> cast1 env (cast2 env v)
   | _, _ -> raise (ImplBug (r.frm, "non-compatible types encountered in (==>)"))
