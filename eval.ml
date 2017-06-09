@@ -153,40 +153,51 @@ let rec eval = function
                  | ConsV(v21, v22) -> v2 (VB (v22, VB(v21, env)))
                  | v -> raise (ImplBugV (r.frm, "match on non-list", v)))
 and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
-    Int, Int -> fun env v -> v
-  | Bool, Bool -> fun env v -> v
-  | Arr(Dyn,Dyn), Arr(Dyn,Dyn) -> fun env v -> v
-  | List Dyn, List Dyn -> fun env v -> v
-  | TyVar id1, TyVar id2 ->
+    Int, Int -> (* R_Id *)
+     fun env v -> v
+  | Bool, Bool -> (* R_Id *)
+     fun env v -> v
+  | Arr(Dyn,Dyn), Arr(Dyn,Dyn) -> (* R_Id *)
+     fun env v -> v
+  | List Dyn, List Dyn -> (* R_Id *)
+     fun env v -> v
+  | TyVar id1, TyVar id2 -> (* R_Id *)
      if id1 = id2 then fun env v -> v
      else raise (ImplBug (r.frm, ("incompatible types "^string_of_int id1^" and "^ string_of_int id2)))
-  | Dyn, Dyn -> fun env v -> v
-  | Int, Dyn -> fun env v -> Tagged (I, v, r)
-  | Bool, Dyn -> fun env v -> Tagged (B, v, r)
-  | Arr(Dyn,Dyn), Dyn -> fun env v -> Tagged (Ar, v, r)
-  | List Dyn, Dyn -> fun env v -> Tagged (L, v, r)
-  | TyVar idx, Dyn -> fun env v -> let (key,name) = lookupty r.frm idx env in Tagged (TV (key,name), v, r)
-  | Dyn, Int ->
+  | Dyn, Dyn -> (* R_Idstar *)
+     fun env v -> v
+  | Int, Dyn ->
+     fun env v -> Tagged (I, v, r)
+  | Bool, Dyn ->
+     fun env v -> Tagged (B, v, r)
+  | Arr(Dyn,Dyn), Dyn ->
+     fun env v -> Tagged (Ar, v, r)
+  | List Dyn, Dyn ->
+     fun env v -> Tagged (L, v, r)
+  | TyVar idx, Dyn ->
+     fun env v -> let (key,name) = lookupty r.frm idx env in
+                  Tagged (TV (key,name), v, r)
+  | Dyn, Int -> (* R_Collapse/R_Conflict *)
      fun env v -> (match v with
                      Tagged(I, v0, _) -> v0
                    | Tagged(_, _, _) -> raise (Blame (r, plr, v, "Int"))
                    | _ -> raise (ImplBugV (r.frm, "untagged value", v)))
-  | Dyn, Bool ->
+  | Dyn, Bool -> (* R_Collapse/R_Conflict *)
      fun env v -> (match v with
                      Tagged(B, v0, _) -> v0
                    | Tagged(_, _, _) -> raise (Blame (r, plr, v, "Bool"))
                    | _ -> raise (ImplBugV (r.frm, "untagged value", v)))
-  | Dyn, Arr(Dyn,Dyn) ->
+  | Dyn, Arr(Dyn,Dyn) -> (* R_Collapse/R_Conflict *)
      fun env v -> (match v with
                    | Tagged(Ar, v0, _) -> v0
                    | Tagged(_, _, _) -> raise (Blame (r, plr, v, "*->*"))
                    | _ -> raise (ImplBugV (r.frm, "untagged value", v)))
-  | Dyn, List Dyn ->
+  | Dyn, List Dyn -> (* R_Collapse/R_Conflict *)
      fun env v -> (match v with
                    | Tagged(L, v0, _) -> v0
                    | Tagged(_, _, _) -> raise (Blame (r, plr, v, "* list"))
                    | _ -> raise (ImplBugV (r.frm, "untagged value", v)))
-  | Dyn, TyVar id ->
+  | Dyn, TyVar id -> (* R_Collapse/R_Conflict *)
      fun env v -> (match v with
                    | Tagged(TV (key1,name), v0, _) ->
                       let (key2,name) = lookupty r.frm id env in
@@ -194,7 +205,7 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
                       else raise (Blame (r, plr, v, name))
                    | Tagged(_, _, _) -> raise (Blame (r, plr, v, "Z"))
                    | _ ->  raise (ImplBugV (r.frm, "untagged value", v)))
-  | Arr(s1,t1), Arr(s2,t2) ->
+  | Arr(s1,t1), Arr(s2,t2) -> (* R_Wrap *)
      let argcast = (s2 ==> s1) r (neg plr) in
      let rescast = (t1 ==> t2) r plr in
      (fun env -> function
@@ -208,23 +219,23 @@ and (==>) t1 t2 r plr = match t1, t2 with  (* cast interpretation *)
        | ConsV(v1, v2) -> ConsV(elmcast env v1, loop env v2)
        | v -> raise (ImplBugV (r.frm, "nonlist value", v))
       in loop)
-  | Forall(id1, t1), Forall(id2, t2) ->
+  | Forall(id1, t1), Forall(id2, t2) -> (* R_Content *)
      let bodycast = (t1 ==> t2) r plr in
      (fun env -> function
         TFun f -> TFun (fun () -> bodycast env (f ()))
       | v -> raise (ImplBugV (r.frm, "application of non-tyabs", v)))
-  | ty1, Forall(id2, ty2) ->
+  | ty1, Forall(id2, ty2) -> (* R_Generalize *)
      let bodycast = (typeShift 1 0 ty1 ==> ty2) r plr in
      fun env v -> TFun (fun () -> bodycast (TB (ref (), id2, env)) v)
-  | Forall(id1, ty1), ty2 ->
+  | Forall(id1, ty1), ty2 -> (* R_Instantiate *)
      let bodycast = (typeInst ty1 Dyn ==> ty2) r plr in
      (fun env -> function
         TFun f -> bodycast env (f ())
       | v ->  raise (ImplBugV (r.frm, "application of non-tyabs", v)))
-  | Arr(s1,t1) as ty, Dyn ->
+  | Arr(s1,t1) as ty, Dyn -> (* R_Ground *)
      let cast = (ty ==> Arr(Dyn, Dyn)) r plr in
      fun env v -> Tagged (Ar, cast env v, r)
-  | Dyn, Arr(s, t) -> 
+  | Dyn, Arr(s, t) -> (* R_Extend *)
      let cast1 = (Arr(Dyn,Dyn) ==> t2) r plr in
      let cast2 = (Dyn ==> Arr(Dyn,Dyn)) r plr in
      fun env v -> cast1 env (cast2 env v)
