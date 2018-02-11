@@ -93,6 +93,7 @@ let rec eval = function
         Plus, IntV i1, IntV i2 -> IntV (i1 + i2)
       | Mult, IntV i1, IntV i2 -> IntV (i1 * i2)
       | Lt, IntV i1, IntV i2 -> BoolV (i1 < i2)
+      | Eq, IntV i1, IntV i2 -> BoolV (i1 = i2)
       | _, v1, IntV _ -> raise (ImplBugRanV (r, "non-integer 1st argument to binop", v1))
       | _, _, v2 -> raise (ImplBugRanV (r, "non-integer 2nd argument to binop", v2)))
   | IfExp(r, e1, e2, e3) ->

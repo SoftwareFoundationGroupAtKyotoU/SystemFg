@@ -52,7 +52,7 @@ let rec typeSubst i ty = function
 let typeInst ty ty' = (* ty must be a body of Forall *)
   typeShift (-1) 0 (typeSubst 0 (typeShift 1 0 ty') ty)
 
-type op = Plus | Mult | Lt
+type op = Plus | Mult | Lt | Eq
 
 module FG =
   struct

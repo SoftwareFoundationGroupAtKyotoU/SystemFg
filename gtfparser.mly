@@ -56,6 +56,11 @@ lTExpr :
       let e2 = e2 ctx in
       BinOp (join_range_exps e1 e2, Lt, e1, e2)
     }
+  | e1=consExpr EQ e2=consExpr { fun ctx ->
+      let e1 = e1 ctx in
+      let e2 = e2 ctx in
+      BinOp (join_range_exps e1 e2, Eq, e1, e2)
+    }
   | e=consExpr { e }
 
 consExpr :

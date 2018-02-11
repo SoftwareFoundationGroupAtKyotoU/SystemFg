@@ -119,7 +119,7 @@ let rec meet ctx ty1 ty2 =
                               
 let typeOfBin = function
     (Plus | Mult) -> Int, Int, Int
-  | Lt -> Int, Int, Bool
+  | (Lt | Eq) -> Int, Int, Bool
 
 type tyenv = (id * binding) list
 exception TypeError of
