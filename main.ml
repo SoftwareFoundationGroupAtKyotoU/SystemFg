@@ -35,12 +35,12 @@ let rec read_eval_print lexeme env tyenv =
        Lexing.flush_input lexeme;
        env, tyenv
     | Syntax.UnboundVar (p, s) -> warningAt p s; env, tyenv
-    | Typing.TypeError (p, s, tyenv, ty) ->
-       pr std_formatter ("\n%a\n" ^^ s) print_pos p (Pp.print_type tyenv) ty;
+    | Typing.TypeError (p, s, tyenv_error, ty) ->
+       pr std_formatter ("\n%a\n" ^^ s) print_pos p (Pp.print_type tyenv_error) ty;
        pr std_formatter "\n";
        env, tyenv
-    | Typing.TypeError2 (p, s, tyenv, ty1, ty2) ->
-       pr std_formatter ("\n%a\n" ^^ s) print_pos p (Pp.print_type tyenv) ty1 (Pp.print_type tyenv) ty2;
+    | Typing.TypeError2 (p, s, tyenv_error, ty1, ty2) ->
+       pr std_formatter ("\n%a\n" ^^ s) print_pos p (Pp.print_type tyenv_error) ty1 (Pp.print_type tyenv_error) ty2;
        pr std_formatter "\n";
        env, tyenv
     | Blame (r, plr, (Tagged(_,_,rv) as v), s) ->

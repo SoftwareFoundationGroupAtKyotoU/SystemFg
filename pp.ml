@@ -117,4 +117,4 @@ let print_rawdecl ppf = function
     Syntax.FG.Prog t -> print_rawterm ppf t
   | Syntax.FG.Decl (id, t) -> pr ppf "let %s = %a" id print_rawterm t
 
-let print_ctx ctx = List.iter (fun (id,_) -> print_string id; print_string ", ") ctx
+let print_ctx ppf ctx = List.iter (fun (id,_) -> pr ppf "%s, " id) ctx
