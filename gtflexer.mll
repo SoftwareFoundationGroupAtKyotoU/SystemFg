@@ -10,6 +10,7 @@ let reservedWords = [
   ("if", fun r-> Gtfparser.IF r);
   ("in", fun r-> Gtfparser.IN r);
   ("let", fun r-> Gtfparser.LET r);
+  ("letd", fun r-> Gtfparser.LETD r);
   ("rec", fun r-> Gtfparser.REC r);
   ("then", fun r-> Gtfparser.THEN r);
   ("true", fun r-> Gtfparser.TRUE r);

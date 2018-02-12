@@ -7,7 +7,7 @@ open FG
 %token <Support.Error.range> LPAREN RPAREN LBRACKET RBRACKET SEMISEMI COLCOL
 %token <Support.Error.range> RARROW DARROW COLON DOT AT SEMI BAR
 %token <Support.Error.range> PLUS AST QM LT EQ
-%token <Support.Error.range> IF THEN ELSE TRUE FALSE LET IN FUN REC MATCH WITH INT BOOL ALL LIST
+%token <Support.Error.range> IF THEN ELSE TRUE FALSE LET LETD IN FUN REC MATCH WITH INT BOOL ALL LIST
 
 %token <int Support.Error.with_ran> INTV
 %token <Syntax.id Support.Error.with_ran> LCID
@@ -20,28 +20,33 @@ open FG
 
 toplevel :
     e=expr SEMISEMI { fun ctx -> Prog (e ctx) }
-  | LET id=LCID plist=letParamList COLON ty=ty EQ e=expr SEMISEMI { fun ctx ->
+  | f=LEToptD id=LCID plist=letParamList COLON ty=ty EQ e=expr SEMISEMI { fun ctx ->
       let t, _ = plist ctx e (Some ty) in
-      Decl (id.v, t) }
-  | LET id=LCID plist=letParamList EQ e=expr SEMISEMI { fun ctx ->
+      Decl (id.v, f.v t) }
+  | f=LEToptD id=LCID plist=letParamList EQ e=expr SEMISEMI { fun ctx ->
       let t, _ = plist ctx e None in
-      Decl (id.v, t) }
-  | start=LET REC lrp=letrecParamList
+      Decl (id.v, f.v t) }
+  | start=LEToptD REC lrp=letrecParamList
                   plist=letParamList COLON ty3=ty EQ e=expr SEMISEMI { fun ctx ->
       let tplist, id1, id2, ty2 = lrp in
       let ctx' = List.fold_left (fun ctx id -> (id.v, Dummy)::ctx) ctx tplist in
       let t2, codtyop = plist ((id2.v, Dummy)::(id1.v, Dummy)::ctx') e (Some ty3) in
       match codtyop with
           Some codty ->
-          let f = FixExp(join_range start (tmRan t2),id1.v,id2.v,ty2 ctx',typeShift (-2) 0 codty,t2) in
+          let f = FixExp(join_range start.r (tmRan t2),id1.v,id2.v,ty2 ctx',typeShift (-2) 0 codty,t2) in
           let f' = List.fold_right
                      (fun id body ->
                        TFunExp(join_range id.r (tmRan body), id.v, body))
                      tplist f
-          in Decl (id1.v, f')
+          in Decl (id1.v, start.v f')
         | None -> failwith "Can't happen: toplevel in gtfparser.mly"
     }
+   /* `letd` (dynamically typed let) assumes ascription `: ?` on the whole expression
+   It is slightly weird to allow parameter and return types to be specified :-) */
 
+LEToptD :
+    r=LET { {v = (fun t -> t); r = r } }
+  | r=LETD { {v = (fun t -> AscExp(tmRan t, t, Dyn)); r = r } }
 
 expr :
     e=ifExpr { e }
@@ -139,31 +144,31 @@ matchExpr :
     }
 
 letExpr :
-    start=LET id=LCID plist=letParamList COLON ty=ty EQ e=expr IN body=expr { fun ctx ->
+    start=LEToptD id=LCID plist=letParamList COLON ty=ty EQ e=expr IN body=expr { fun ctx ->
       let t, _ = plist ctx e (Some ty) in
       let body = body ((id.v, Dummy)::ctx) in
-      LetExp(join_range start (tmRan body), id.v, t, body)
+      LetExp(join_range start.r (tmRan body), id.v, start.v t, body)
     }
-  | start=LET id=LCID plist=letParamList EQ e=expr IN body=expr { fun ctx ->
+  | start=LEToptD id=LCID plist=letParamList EQ e=expr IN body=expr { fun ctx ->
       let t, _ = plist ctx e None in
       let body = body ((id.v, Dummy)::ctx) in
-      LetExp(join_range start (tmRan body), id.v, t, body)
+      LetExp(join_range start.r (tmRan body), id.v, start.v t, body)
     }
-  | start=LET REC lrp=letrecParamList
+  | start=LEToptD REC lrp=letrecParamList
                   plist=letParamList COLON ty3=ty EQ e=expr IN body=expr { fun ctx ->
       let tplist, id1, id2, ty2 = lrp in
       let ctx' = List.fold_left (fun ctx id -> (id.v, Dummy)::ctx) ctx tplist in
       let t2, codtyop = plist ((id2.v, Dummy)::(id1.v, Dummy)::ctx') e (Some ty3) in
       match codtyop with
           Some codty ->
-          let f = FixExp(join_range start (tmRan t2),id1.v,id2.v,ty2 ctx',typeShift (-2) 0 codty,t2) in
+          let f = FixExp(join_range start.r (tmRan t2),id1.v,id2.v,ty2 ctx',typeShift (-2) 0 codty,t2) in
           let f' = List.fold_right
                      (fun id body ->
                        TFunExp(join_range id.r (tmRan body), id.v, body))
                      tplist f
           in
           let body = body ((id1.v, Dummy)::ctx) in
-          LetExp(join_range start (tmRan body), id1.v, f', body)
+          LetExp(join_range start.r (tmRan body), id1.v, start.v f', body)
         | None -> failwith "Can't happen: letExpr in gtfparser.mly"
     }
 
