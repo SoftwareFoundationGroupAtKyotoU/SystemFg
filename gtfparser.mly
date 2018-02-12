@@ -48,9 +48,9 @@ expr :
   | e=matchExpr { e }
   | e=funExpr { e }
   | e=letExpr { e }
-  | e=lTExpr { e }
+  | e=ltExpr { e }
 
-lTExpr :
+ltExpr :
     e1=consExpr LT e2=consExpr { fun ctx ->
       let e1 = e1 ctx in
       let e2 = e2 ctx in
