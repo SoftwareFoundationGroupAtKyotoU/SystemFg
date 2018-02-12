@@ -181,6 +181,11 @@ funParamList :
       let body = t ((id.v, Dummy (* VDecl ty*))::ctx) in
       FunExp(join_range start (tmRan body), id.v, ty, body)
     }
+  | id=LCID { fun ctx t ->
+      let ty = Dyn in
+      let body = t ((id.v, Dummy (* VDecl ty*))::ctx) in
+      FunExp(join_range id.r (tmRan body), id.v, ty, body)
+    }
   | id=UCID { fun ctx t ->
       let body = t ((id.v, Dummy (* PossiblySTVar (ref true) *))::ctx) in
       TFunExp(join_range id.r (tmRan body), id.v, body)
@@ -189,6 +194,11 @@ funParamList :
       let ty = ty ctx in
       let body = rest ((id.v, Dummy (* VDecl ty *))::ctx) t in
       FunExp(join_range start (tmRan body), id.v, ty, body)
+    }
+  | id=LCID rest=funParamList { fun ctx t ->
+      let ty = Dyn in
+      let body = rest ((id.v, Dummy (* VDecl ty *))::ctx) t in
+      FunExp(join_range id.r (tmRan body), id.v, ty, body)
     }
   | id=UCID rest=funParamList { fun ctx t ->
       let body = rest ((id.v, Dummy (* PossiblySTVar (ref true) *))::ctx) t in
@@ -206,6 +216,14 @@ letParamList :
        let paramty = paramty ctx in
        let t, tyop' = rest ((id.v, Dummy (* VDecl paramty *))::ctx) t tyop in
        FunExp(join_range start (tmRan t), id.v, paramty, t),
+       match tyop' with
+          Some ty' -> Some (Arr(paramty, typeShift (-1) 0 ty'))
+        | None -> None
+    }
+  | id=LCID rest=letParamList { fun ctx t tyop ->
+       let paramty = Dyn in
+       let t, tyop' = rest ((id.v, Dummy (* VDecl paramty *))::ctx) t tyop in
+       FunExp(join_range id.r (tmRan t), id.v, paramty, t),
        match tyop' with
           Some ty' -> Some (Arr(paramty, typeShift (-1) 0 ty'))
         | None -> None
