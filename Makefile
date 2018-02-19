@@ -54,6 +54,6 @@ clean:
 
 # Dependencies
 depend:: $(DEPEND)
-	$(OCAMLDEP) $(INCLUDES) -native *.mli *.ml > .depend
+	$(OCAMLDEP) $(INCLUDES) -native *.mli $(subst .cmx,.ml,$(COMMONOBJS)) > .depend
 
 -include .depend
