@@ -1,5 +1,5 @@
 // gradual typing
-let dsucc (x:?) : ? = x + 1;;
+letd dsucc x = x + 1;;
 dsucc 4;;
 dsucc true;;
 
@@ -13,43 +13,19 @@ ssucc2 true;;
 
 let neg(b:bool) = if b then false else true;;
 
-let dtwice (f:?->?) (x:?) = f (f x);;
+letd dtwice f x = f (f x);;
 dtwice ssucc 5;;
 dtwice neg true;;
 
 let twice_int (f:int->int) (x:int) = f (f x);;
 let twice_bool (f:bool->bool) (x:bool) = f (f x);;
 
-let funny_twice (f:?->?) (x:?) = f ((f x) + 2);;
+letd funny_twice f x = f ((f x) + 2);;
 funny_twice ssucc 5;;
 funny_twice neg true;;
 
 let twice_int2 : (int->int)->int->int = funny_twice;;
 twice_int2 ssucc 5;;
-
-// polymorphism
-let poly_twice X (f: X->X) (x:X) = f(f x);;
-poly_twice [int] ssucc 5;;
-poly_twice [bool] neg true;;
-
-let twice : All X.(X->X)->(X->X) = dtwice;;
-twice [int] ssucc 5;;
-twice [bool] neg true;;
-
-let wrong_twice : All A.(A->A)->(A->A) = funny_twice;;
-wrong_twice [bool] neg true;;
-wrong_twice [int] ssucc 5;;
-
-
-// K combinator, gradually
-
-let dynk (x:?) (y:?) = x;;
-
-let gradk : All X.X -> ? -> X = dynk;;
-
-let polyk : All X Y. X->Y->X = gradk;;
-
-polyk [int] [bool] 4 true;;
 
 // Recursion
 let rec sum (x:int) : int = if x < 1 then 0 else x + sum (x + (-1));;
@@ -57,6 +33,12 @@ sum 10;;
 
 let sum2 = let rec f (x:int) : int = if x < 1 then 0 else x + f (x + (-1)) in f;;
 sum2 10;;
+
+// type predicate
+letd adhoc_neg x =
+  if isInt x then ((-1) * x : ?)
+  else if isBool x then (neg x : ?)
+  else x;;
 
 // lists
 let xs = [1; 2; 3; @int];; // statically typed list
@@ -76,12 +58,35 @@ let rec append (as:int list) (bs:int list) : int list =
 
 let zs = append xs xs;;
 
-let rec dynappend (as:?) (bs:?) : ? =
+letd rec dynappend as bs =
   match as with
     [] -> bs
   | a :: cs -> a :: dynappend cs bs;;
 
 let ws = dynappend xs ys;;
+
+// polymorphism
+let poly_twice X (f: X->X) (x:X) = f(f x);;
+poly_twice [int] ssucc 5;;
+poly_twice [bool] neg true;;
+
+let twice : All X.(X->X)->(X->X) = dtwice;;
+twice [int] ssucc 5;;
+twice [bool] neg true;;
+
+let wrong_twice : All A.(A->A)->(A->A) = funny_twice;;
+wrong_twice [bool] neg true;;
+wrong_twice [int] ssucc 5;;
+
+// K combinator, gradually
+
+letd dynk x y = x;;
+
+let gradk : All X.X -> ? -> X = dynk;;
+
+let polyk : All X Y. X->Y->X = gradk;;
+
+polyk [int] [bool] 4 true;;
 
 // polymorphic lists
 let rec append X (as:X list) (bs:X list) : X list =
