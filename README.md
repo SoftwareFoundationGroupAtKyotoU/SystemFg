@@ -1,5 +1,9 @@
 # Interpreter of PBC
 
+## Requirement
+
+* menhir
+
 ## Build instructions
 
 * Do `make depend` and `make`.  You'll get `pbci`.
