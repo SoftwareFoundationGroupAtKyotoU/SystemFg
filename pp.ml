@@ -82,6 +82,12 @@ and print_rawforall ppf t =
     Forall(id, t0) -> pr ppf " %s%a" id print_rawforall t0
   | _ -> pr ppf ". %a" print_rawtype t
 
+let print_op ppf = function
+    Plus -> pr ppf " + "
+  | Mult -> pr ppf " * "
+  | Lt -> pr ppf " < "
+  | Eq -> pr ppf " = "
+
 let rec print_rawterm ppf =
   let open Syntax.FG in
   function
@@ -89,7 +95,7 @@ let rec print_rawterm ppf =
   | IConst (_, i) ->  pr ppf "%d" i
   | BConst (_, true) -> pp_print_string ppf "true"
   | BConst (_, false) -> pp_print_string ppf "false"
-  | BinOp (_, op, t1, t2) -> pr ppf "(%a op %a)" print_rawterm t1 print_rawterm t2
+  | BinOp (_, op, t1, t2) -> pr ppf "(%a %a %a)" print_rawterm t1 print_op op print_rawterm t2
   | IfExp (_, t1, t2, t3) ->
      pr ppf "if %a then %a else %a" print_rawterm t1 print_rawterm t2 print_rawterm t3
   | FunExp (_, id, ty, t0) ->
@@ -118,3 +124,46 @@ let print_rawdecl ppf = function
   | Syntax.FG.Decl (id, t) -> pr ppf "let %s = %a" id print_rawterm t
 
 let print_ctx ppf ctx = List.iter (fun (id,_) -> pr ppf "%s, " id) ctx
+
+module FC =
+  struct
+    let rec print_rawterm ppf =
+      let open Syntax.FC in
+      function
+        Var (_, i) -> pr ppf "#%d" i
+      | IConst (_, i) ->  pr ppf "%d" i
+      | BConst (_, true) -> pp_print_string ppf "true"
+      | BConst (_, false) -> pp_print_string ppf "false"
+      | BinOp (_, op, t1, t2) -> pr ppf "(%a %a %a)" print_rawterm t1 print_op op print_rawterm t2
+      | IfExp (_, t1, t2, t3) ->
+         pr ppf "if %a then %a else %a" print_rawterm t1 print_rawterm t2 print_rawterm t3
+      | (FunExp (_, _, _, _) | TSFunExp (_, _, _) | TGFunExp(_, _, _)) as t ->
+         pr ppf "fun %a" print_fun t
+      | FixExp (_, id1, id2, ty1, ty2, t0) ->
+         pr ppf "fix %s(%s : %a) : %a = %a" id1 id2 print_rawtype ty1 print_rawtype ty2 print_rawterm t0
+      | AppExp (_, t1, t2) ->
+         pr ppf "(%a) (%a)" print_rawterm t1 print_rawterm t2
+      | TAppExp (_, t0, ty) ->
+         pr ppf "%a [%a]" print_rawterm t0 print_rawtype ty
+      | CastExp (_, t0, ty1, ty2) ->
+         pr ppf "(%a : %a => %a)" print_rawterm t0 print_rawtype ty1 print_rawtype ty2
+      | NilExp (_, ty) -> pr ppf "[@%a]" print_rawtype ty
+      | ConsExp (_, t1, t2) -> pr ppf "(%a) :: (%a)" print_rawterm t1 print_rawterm t2
+      | MatchExp (_, t1, t2, id1, id2, t3) ->
+         pr ppf "match %a with [] -> %a | %s::%s -> %a" print_rawterm t1 print_rawterm t2 id1 id2 print_rawterm t3
+    and print_fun ppf =
+      let open Syntax.FC in
+      function
+      | FunExp (_, id, ty, t0) ->
+         pr ppf "(%s : %a) %a" id print_rawtype ty print_fun t0
+      | TSFunExp (_, id, t0) ->
+         pr ppf "%s %a" id print_fun t0
+      | TGFunExp (_, id, t0) ->
+         pr ppf "_%s_ %a" id print_fun t0
+      | t ->
+         pr ppf "-> %a" print_rawterm t
+        
+    let print_rawdecl ppf = function
+        Syntax.FC.Prog t -> print_rawterm ppf t
+      | Syntax.FC.Decl (id, t) -> pr ppf "let %s = %a" id print_rawterm t
+  end

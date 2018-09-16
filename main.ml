@@ -19,6 +19,7 @@ let rec read_eval_print lexeme env tyenv =
          they should agree *)
       (* pr std_formatter "DEBUG: %a vs %a\n" (print_type tyenv) ty (print_type tyenv) tye; *)
       assert(ty = tye);
+      pr std_formatter "\027[32mDEBUG: %a\027[0m\n" FC.print_rawdecl decl;
       let (id, v, newenv, newtyenv) = match decl with
           Syntax.FC.Prog e ->
             let v = eval e env in
